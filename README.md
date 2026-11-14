@@ -15,7 +15,8 @@
   <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
 </p>
 
-Add one line to your client, and your assistant gets tools that act on the Mac it's running on.
+Add it to your client in a minute, and your assistant stops explaining how to do things on your Mac
+and starts doing them.
 
 ## Get started
 
