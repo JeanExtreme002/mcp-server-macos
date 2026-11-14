@@ -1,0 +1,105 @@
+"""The tools of mcp_server_macos.tools.notifications, with macos.notify faked."""
+
+from typing import Any, Dict, List, Tuple
+
+import macos
+import pytest
+from mcp import Client
+
+from tests.helpers import text
+
+pytestmark = pytest.mark.anyio
+
+Call = Tuple[Tuple[Any, ...], Dict[str, Any]]
+
+
+@pytest.fixture
+def notified(monkeypatch: pytest.MonkeyPatch) -> List[Call]:
+    """The calls made to macos.notify, which posts nothing."""
+    calls: List[Call] = []
+    monkeypatch.setattr(macos, "notify", lambda *args, **kwargs: calls.append((args, kwargs)))
+    return calls
+
+
+async def test_send_notification(client: Client, notified: List[Call]) -> None:
+    result = await client.call_tool("send_notification", {"message": "Build finished"})
+
+    assert not result.is_error
+    assert text(result) == "Notification sent."
+    assert notified == [(("Build finished",), {"title": None, "subtitle": None, "sound": None})]
+
+
+async def test_send_notification_with_everything(client: Client, notified: List[Call]) -> None:
+    result = await client.call_tool(
+        "send_notification", {"message": "Build finished", "title": "CI", "subtitle": "main", "sound": "Glass"}
+    )
+
+    assert not result.is_error
+    assert notified == [(("Build finished",), {"title": "CI", "subtitle": "main", "sound": "Glass"})]
+
+
+async def test_send_notification_takes_text_as_it_is(client: Client, notified: List[Call]) -> None:
+    # Quotes, newlines and emoji aren't the server's to escape: pymacos passes text as arguments.
+    message = "It's \"done\" — 100% ✅\n$(rm -rf ~); `id`"
+
+    result = await client.call_tool("send_notification", {"message": message, "title": "-n"})
+
+    assert not result.is_error
+    assert notified == [((message,), {"title": "-n", "subtitle": None, "sound": None})]
+
+
+@pytest.mark.parametrize(
+    "arguments",
+    [
+        {},
+        {"title": "No message"},
+        {"message": ""},
+        {"message": None},
+        {"message": ["a", "list"]},
+        {"message": "ok", "title": {"not": "text"}},
+    ],
+)
+async def test_send_notification_refuses_invalid_arguments(
+    client: Client, notified: List[Call], arguments: Dict[str, Any]
+) -> None:
+    result = await client.call_tool("send_notification", arguments)
+
+    assert result.is_error
+    assert "send_notification" in text(result)
+    assert notified == []
+
+
+@pytest.mark.parametrize(
+    "error, expected",
+    [
+        (ValueError("no alert sound is named 'nope'"), "ValueError: no alert sound is named 'nope'"),
+        (
+            macos.PermissionDeniedError("notifications are turned off for Script Editor"),
+            "PermissionDeniedError: notifications are turned off for Script Editor",
+        ),
+        (macos.NotSupportedError("macos.notifications requires macOS"), "NotSupportedError: macos.notifications"),
+        (macos.CommandError(["osascript"], 1, "execution error"), "CommandError: "),
+    ],
+)
+async def test_send_notification_reports_what_macos_refused(
+    client: Client, monkeypatch: pytest.MonkeyPatch, error: Exception, expected: str
+) -> None:
+    def notify(*args: Any, **kwargs: Any) -> None:
+        raise error
+
+    monkeypatch.setattr(macos, "notify", notify)
+
+    result = await client.call_tool("send_notification", {"message": "hello", "sound": "nope"})
+
+    assert result.is_error
+    assert expected in text(result)
+
+
+async def test_send_notification_is_not_read_only(client: Client) -> None:
+    (tool,) = [tool for tool in (await client.list_tools()).tools if tool.name == "send_notification"]
+
+    assert tool.annotations is not None
+    assert tool.annotations.read_only_hint is False
+    assert tool.annotations.destructive_hint is False
+    assert tool.input_schema["required"] == ["message"]
+    assert set(tool.input_schema["properties"]) == {"message", "title", "subtitle", "sound"}
