@@ -16,7 +16,6 @@
 </p>
 
 Add one line to your client, and your assistant gets tools that act on the Mac it's running on.
-Two tools today, with the rest of pymacos on its way.
 
 ## Get started
 
@@ -54,8 +53,8 @@ Requires macOS and Python 3.10 or newer.
 macOS gives privacy permissions to the app that runs the server (Claude Desktop, your terminal, your
 editor), not to the server itself.
 
-Notifications are posted through Script Editor. If they're turned off for it in
-*System Settings › Notifications*, `send_notification` says so instead of sending one you'd never see.
+When a tool needs a permission that's missing, it tells the assistant which one, instead of failing
+silently.
 
 ## Contributing
 

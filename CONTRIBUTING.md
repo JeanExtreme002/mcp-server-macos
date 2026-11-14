@@ -57,7 +57,8 @@ happens on the Mac is fixed in pymacos, and so is a missing feature.
 3. Register it in the module's `register(server)`, with `add_tool`, a title and the annotations that
    say what it does to the Mac: `READ_ONLY` or `ADDITIVE`, from `_registry.py`. A tool that replaces
    or deletes something needs annotations of its own, with the destructive hint on.
-4. Test it (below), add its name to `TOOLS` in `tests/unit/test_server.py`, and list it in the README.
+4. Test it (below), and add its name to `TOOLS` in `tests/unit/test_server.py`. The README doesn't list
+   the tools: a client shows them, with their descriptions.
 
 ## Tests
 
