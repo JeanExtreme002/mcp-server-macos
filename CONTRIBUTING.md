@@ -119,12 +119,15 @@ The release notes on [GitHub Releases](https://github.com/JeanExtreme002/mcp-ser
 are the changelog: there's no `CHANGELOG.md` to keep in step with them.
 
 1. Merge the changes the release ships.
-2. Open a pull request titled `chore: bump version to X.Y.Z` that only
-   changes `__version__` in `mcp_server_macos/__init__.py`, following the rules above, and merge it.
+2. Open a pull request titled `chore: bump version to X.Y.Z` that only changes the version, following
+   the rules above, and merge it. The version is written in two files, which a test keeps equal:
+   `__version__` in `mcp_server_macos/__init__.py`, and `server.json` (twice: the server's and the
+   package's).
 3. On GitHub, create a release whose tag is `vX.Y.Z`, made from `main`. The notes list the changes
    under *New*, *Changed* (worth a look if you rely on them) and *Fixed*.
 
 Publishing the release starts the `Publish to PyPI` workflow: it refuses a
 tag that doesn't match `__version__` or isn't on `main`, builds the package
 once, runs the whole suite (live tests included) against that build, and only
-then uploads it.
+then uploads it. Once the package is on PyPI, it lists the release in the
+[MCP Registry](https://registry.modelcontextprotocol.io), from `server.json`.
