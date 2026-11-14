@@ -33,7 +33,7 @@ def test_permission_says_where_it_is_granted(permission: Permission) -> None:
     assert permission.where.startswith("System Settings › ")
     assert permission.name in permission.instructions()
     assert permission.where in permission.instructions()
-    assert APP in permission.instructions()
+    assert permission.app in permission.instructions()
     assert ("restart that app" in permission.instructions()) is permission.restart
 
 
@@ -51,6 +51,16 @@ def test_permission_asks_pymacos_for_its_prompt(permission: Permission, monkeypa
     for answer in (True, False):
         monkeypatch.setattr(getattr(macos, module), function, lambda answer=answer: answer)
         assert _permissions.ask(permission) is answer
+
+
+def test_permissions_are_granted_to_the_app_that_runs_the_server_except_notifications() -> None:
+    # Notifications are posted through Script Editor: allowing the MCP client wouldn't help.
+    for permission in EVERY:
+        if permission is _permissions.NOTIFICATIONS:
+            assert permission.app.startswith("Script Editor")
+            assert APP not in permission.instructions()
+        else:
+            assert permission.app == APP
 
 
 def test_no_permission_has_nothing_to_ask() -> None:

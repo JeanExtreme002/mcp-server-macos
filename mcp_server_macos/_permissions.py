@@ -6,7 +6,7 @@ is ask macOS to show its prompt, where it has one, and otherwise tell the model 
 has to allow and where, so it can ask them.
 
 A permission is granted to the app that runs the server (the MCP client, or the terminal it was started
-from), not to the server.
+from), not to the server. Notifications are the exception: they belong to Script Editor, which posts them.
 """
 
 from dataclasses import dataclass
@@ -14,7 +14,7 @@ from typing import Callable, Optional
 
 import macos
 
-#: Who the user has to allow, in words a model can pass on.
+#: Who the user has to allow, unless the permission says otherwise, in words a model can pass on.
 APP = "the app that runs this server (the MCP client, or the terminal it was started from)"
 
 
@@ -35,13 +35,16 @@ class Permission:
     #: Whether the app has to be restarted for the permission to apply.
     restart: bool = False
 
+    #: Who the user has to allow: the app that runs the server, for all but a few.
+    app: str = APP
+
     #: What else the user may need to know.
     note: str = ""
 
     def instructions(self) -> str:
         """What to ask the user for, once the permission is known to be missing."""
         text = "This needs the {} permission, which only the user can grant. Ask them to allow {} in {}".format(
-            self.name, APP, self.where
+            self.name, self.app, self.where
         )
         text += ", to restart that app, and then try again." if self.restart else ", and then try again."
         return "{} {}".format(text, self.note) if self.note else text
@@ -104,10 +107,10 @@ FULL_DISK_ACCESS = Permission(
 NOTIFICATIONS = Permission(
     name="Notifications",
     where="System Settings › Notifications › Script Editor",
+    app="Script Editor, which macOS shows the notifications as coming from,",
     note=(
-        "It's Script Editor that has to be allowed, not the app that runs this server: macOS shows "
-        "notifications as coming from it. If Script Editor isn't listed there yet, the user can open "
-        'Script Editor, run `display notification "hi"` once and accept the prompt.'
+        "If Script Editor isn't listed there yet, the user can open Script Editor, run "
+        '`display notification "hi"` once and accept the prompt.'
     ),
 )
 

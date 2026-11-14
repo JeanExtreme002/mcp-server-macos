@@ -120,7 +120,11 @@ async def test_send_notification_says_where_to_turn_notifications_on(
     result = await client.call_tool("send_notification", {"message": "hello"})
 
     assert result.is_error
-    assert "System Settings › Notifications › Script Editor" in text(result)
-    assert "It's Script Editor that has to be allowed" in text(result)
+    assert (
+        "Ask them to allow Script Editor, which macOS shows the notifications as coming from, "
+        "in System Settings › Notifications › Script Editor, and then try again."
+    ) in text(result)
+    # Not the app that runs the server, as for the other permissions.
+    assert "MCP client" not in text(result)
     # macOS has no prompt to show for it, so nothing was asked and nothing run twice.
     assert len(calls) == 1
