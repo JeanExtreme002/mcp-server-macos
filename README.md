@@ -15,6 +15,8 @@
   <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
 </p>
 
+<br>
+
 Add it in a minute, and your assistant stops explaining what to do on your Mac and starts doing it.
 
 ## Get started
