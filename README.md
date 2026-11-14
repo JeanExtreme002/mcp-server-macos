@@ -15,8 +15,7 @@
   <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
 </p>
 
-Add it to your client in a minute, and your assistant stops explaining how to do things on your Mac
-and starts doing them.
+Add it in a minute, and your assistant stops explaining what to do on your Mac and starts doing it.
 
 ## Get started
 
