@@ -56,12 +56,15 @@ happens on the Mac is fixed in pymacos, and so is a missing feature.
      sentence, when the tool only acts. Convert what JSON lacks (a `timedelta` to seconds, a `Path` to
      text), and put the unit in the field's name (`memory_bytes`, `uptime_seconds`).
    - Don't catch the errors of pymacos: `add_tool` reports them to the model, with their message.
-3. Register it in the module's `register(server)`, with `add_tool` and a title, and say two things
-   about it:
+3. Register it in the module's `register(server)`, with `add_tool` and a title, and say what applies
+   of these about it:
    - `annotations`: what it does to the Mac, which a client uses to decide when to ask the user first.
      One of `READ_ONLY` (changes nothing), `ADDITIVE` (adds or shows something), `REPLACING` (sets
-     something to a given value) and `DESTRUCTIVE` (deletes, or can't be taken back), from
-     `_registry.py`. When in doubt between two, take the more cautious one.
+     something to a given value), `DESTRUCTIVE` (deletes, or can't be taken back) and `OPEN_ENDED`
+     (opens or runs what may itself do anything), from `_registry.py`. When in doubt between two, take the more cautious one.
+   - `main_thread=True`, for the few features macOS only allows on the main thread (the geocoder, the
+     camera...): pymacos raises `MainThreadError` for them elsewhere, and its docs say which they are.
+     The tool then runs on the server's own thread, which answers nothing else meanwhile.
    - `permission`: the privacy permission of macOS it needs, if any, from `_permissions.py`
      (`SCREEN_RECORDING`, `ACCESSIBILITY`...). The pymacos docs list
      [which feature needs which](https://macos.readthedocs.io/en/latest/permissions.html). When the
@@ -95,9 +98,11 @@ The tests are in two folders, with one file per module (`test_system.py` tests
 - `tests/live`: call the tools against the real system, and are skipped outside macOS. What the tools
   do really happens on your Mac: a notification shows up, the clipboard is used (its text is put back)
   and the Mac is kept awake for a moment, a small disk image is made, mounted and unmounted, and a
-  `sleep` process is started and ended, a sound is played at no volume, and a preferences domain of
-  the tests' own is written and removed. They only use the tools that leave things as they were:
-  nothing is put to sleep, said out loud or turned off, and no setting is changed.
+  `sleep` process is started and ended, a sound is played at no volume, a preferences domain and a
+  Keychain item of the tests' own are written and removed, Calculator is opened in the background and
+  quit (unless it was open), and three dialogs show for a second each. They only use the tools that
+  leave things as they were: nothing is put to sleep, said out loud, turned off, installed or run, and
+  no setting is changed.
 
 Both call the tools as a client does, through the protocol, with the `client` fixture of
 `tests/conftest.py`: that tests the schema and the error reporting along with the function. The tests

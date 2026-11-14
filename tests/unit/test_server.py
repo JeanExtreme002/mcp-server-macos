@@ -8,7 +8,7 @@ from mcp.server.mcpserver import MCPServer
 
 import mcp_server_macos
 from mcp_server_macos import create_server
-from mcp_server_macos._registry import ADDITIVE, DESTRUCTIVE, READ_ONLY, READ_ONLY_ONLINE, REPLACING
+from mcp_server_macos._registry import ADDITIVE, DESTRUCTIVE, OPEN_ENDED, READ_ONLY, READ_ONLY_ONLINE, REPLACING
 from tests.helpers import text
 
 pytestmark = pytest.mark.anyio
@@ -22,6 +22,32 @@ ANNOTATIONS = {
     "get_appearance": READ_ONLY,
     "set_appearance": REPLACING,
     "wait_for_appearance_change": READ_ONLY,
+    # apps
+    "list_running_apps": READ_ONLY,
+    "get_frontmost_app": READ_ONLY,
+    "get_running_app": READ_ONLY,
+    "list_installed_apps": READ_ONLY,
+    "open_app": ADDITIVE,
+    "activate_app": REPLACING,
+    "set_app_hidden": REPLACING,
+    "quit_app": DESTRUCTIVE,
+    "get_default_app": READ_ONLY,
+    "set_default_app": REPLACING,
+    "install_app_from_disk_image": DESTRUCTIVE,
+    "uninstall_app": DESTRUCTIVE,
+    "list_login_items": READ_ONLY,
+    "add_login_item": ADDITIVE,
+    "remove_login_item": REPLACING,
+    "check_quarantine": READ_ONLY,
+    "remove_quarantine": DESTRUCTIVE,
+    # auth
+    "check_user_authentication": READ_ONLY,
+    "authenticate_user": ADDITIVE,
+    # bluetooth
+    "get_bluetooth_status": READ_ONLY,
+    "set_bluetooth_power": REPLACING,
+    "connect_bluetooth_device": REPLACING,
+    "disconnect_bluetooth_device": REPLACING,
     # clipboard
     "get_clipboard": READ_ONLY,
     "get_clipboard_image": READ_ONLY,
@@ -35,6 +61,18 @@ ANNOTATIONS = {
     "read_preference": READ_ONLY,
     "write_preference": REPLACING,
     "delete_preference": DESTRUCTIVE,
+    # dialog
+    "show_alert": ADDITIVE,
+    "ask_confirmation": ADDITIVE,
+    "ask_text": ADDITIVE,
+    "ask_choice": ADDITIVE,
+    "ask_for_files": ADDITIVE,
+    "ask_for_folder": ADDITIVE,
+    # keychain
+    "list_keychain_accounts": READ_ONLY,
+    "get_keychain_password": READ_ONLY,
+    "set_keychain_password": REPLACING,
+    "delete_keychain_password": DESTRUCTIVE,
     # language
     "detect_language": READ_ONLY,
     "analyze_sentiment": READ_ONLY,
@@ -42,6 +80,13 @@ ANNOTATIONS = {
     "embed_text": READ_ONLY,
     "find_entities": READ_ONLY,
     "extract_keywords": READ_ONLY,
+    # launch
+    "open_file_or_url": OPEN_ENDED,
+    # maps
+    "geocode_address": READ_ONLY_ONLINE,
+    "reverse_geocode": READ_ONLY_ONLINE,
+    "show_in_maps": ADDITIVE,
+    "show_directions_in_maps": ADDITIVE,
     # network
     "get_network_status": READ_ONLY,
     "list_network_interfaces": READ_ONLY,
@@ -61,6 +106,9 @@ ANNOTATIONS = {
     "allow_sleep": REPLACING,
     "sleep_mac": DESTRUCTIVE,
     "sleep_display": REPLACING,
+    # shortcuts
+    "list_shortcuts": READ_ONLY,
+    "run_shortcut": OPEN_ENDED,
     # sound
     "get_sound_settings": READ_ONLY,
     "play_sound": ADDITIVE,

@@ -1,6 +1,7 @@
 """How tools are registered: the modules listed, and the errors a tool reports."""
 
 import importlib
+import threading
 import pkgutil
 
 import macos
@@ -45,6 +46,9 @@ def test_every_tool_module_is_a_toolset_named_after_it() -> None:
         (macos.NotSupportedError("needs macOS"), "NotSupportedError: needs macOS"),
         (macos.MacOSError("it failed"), "MacOSError: it failed"),
         (ValueError("no such sound"), "ValueError: no such sound"),
+        (FileNotFoundError("/nope.txt"), "FileNotFoundError: /nope.txt"),
+        (LookupError("no folder is named 'Work'"), "LookupError: no folder is named 'Work'"),
+        (macos.AppNotFoundError("unable to find application 'Nope'"), "AppNotFoundError: unable to find application 'Nope'"),
     ],
 )
 def test_expected_errors_become_tool_errors(error: Exception, expected: str) -> None:
@@ -59,13 +63,17 @@ def test_expected_errors_become_tool_errors(error: Exception, expected: str) -> 
     assert raised.value.__cause__ is error
 
 
-def test_unexpected_errors_are_left_alone() -> None:
+@pytest.mark.parametrize("error", [RuntimeError("a bug"), KeyError("missing"), IndexError("out of range"), TypeError("x")])
+def test_unexpected_errors_are_left_alone(error: Exception) -> None:
+    # A missing key or index is a bug in the code: it's reported as a crash, without its text.
     @translate_errors
     def tool() -> None:
-        raise RuntimeError("a bug")
+        raise error
 
-    with pytest.raises(RuntimeError):
+    with pytest.raises(type(error)) as raised:
         tool()
+
+    assert raised.value is error
 
 
 def test_translate_errors_keeps_the_function() -> None:
@@ -150,6 +158,12 @@ def test_annotations_say_what_a_tool_does() -> None:
     assert all(annotations.open_world_hint is False for annotations in every)
     assert _registry.READ_ONLY_ONLINE.open_world_hint is True
     assert _registry.READ_ONLY_ONLINE.read_only_hint is True
+
+    # What opens or runs something that may do anything is marked as the worst on every count.
+    assert _registry.OPEN_ENDED.read_only_hint is False
+    assert _registry.OPEN_ENDED.destructive_hint is True
+    assert _registry.OPEN_ENDED.idempotent_hint is False
+    assert _registry.OPEN_ENDED.open_world_hint is True
 
     assert _registry.READ_ONLY.read_only_hint is True
     assert [annotations.read_only_hint for annotations in every[1:]] == [False, False, False]
@@ -301,3 +315,53 @@ async def test_tool_registered_with_a_permission_asks_for_it() -> None:
     assert not result.is_error
     assert text(result) == "captured"
     assert screen.prompts == 1
+
+
+# Where a tool runs: a plain one on a worker thread, one that needs the main thread on the server's own.
+
+
+async def test_tool_runs_on_a_worker_thread_unless_it_needs_the_main_one() -> None:
+    def where_am_i() -> str:
+        """Say which thread this runs on."""
+        return threading.current_thread().name
+
+    def where_am_i_on_main() -> str:
+        """Say which thread this runs on, asked to be the main one."""
+        return threading.current_thread().name
+
+    server = MCPServer(name="test")
+    add_tool(server, where_am_i, title="Where", annotations=READ_ONLY)
+    add_tool(server, where_am_i_on_main, title="Where, on main", annotations=READ_ONLY, main_thread=True)
+
+    async with Client(server) as client:
+        worker = await client.call_tool("where_am_i", {})
+        main = await client.call_tool("where_am_i_on_main", {})
+        (tool,) = [tool for tool in (await client.list_tools()).tools if tool.name == "where_am_i_on_main"]
+
+    assert text(main) == threading.current_thread().name  # the thread the server, and this test, run on
+    assert text(worker) != text(main)
+    # Still named and described by its function.
+    assert tool.description == "Say which thread this runs on, asked to be the main one."
+
+
+async def test_tool_on_the_main_thread_reports_errors_and_asks_for_permissions_like_any_other() -> None:
+    screen = Screen(prompt_grants=True)
+
+    def capture(region: str) -> str:
+        """Capture a region of the screen."""
+        if region == "nowhere":
+            raise ValueError("no such region")
+        return "{} {}".format(screen.tool(), region)
+
+    server = MCPServer(name="test")
+    add_tool(server, capture, title="Capture", annotations=READ_ONLY, permission=screen.permission, main_thread=True)
+
+    async with Client(server) as client:
+        granted = await client.call_tool("capture", {"region": "left"})
+        refused = await client.call_tool("capture", {"region": "nowhere"})
+        invalid = await client.call_tool("capture", {})
+
+    assert text(granted) == "captured left"
+    assert screen.prompts == 1
+    assert refused.is_error and "ValueError: no such region" in text(refused)
+    assert invalid.is_error

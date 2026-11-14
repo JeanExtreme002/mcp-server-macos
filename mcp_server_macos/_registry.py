@@ -42,6 +42,10 @@ REPLACING = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempot
 #: Deletes something, or does what can't be taken back.
 DESTRUCTIVE = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=False)
 
+#: Opens or runs something that may itself do anything, on this Mac or beyond it: a file that may be
+#: a script, a URL, a shortcut. What it does can't be told beforehand, so it's marked as the worst.
+OPEN_ENDED = ToolAnnotations(read_only_hint=False, destructive_hint=True, idempotent_hint=False, open_world_hint=True)
+
 
 def translate_errors(function: _Function, permission: Optional[Permission] = None) -> _Function:
     """
@@ -51,8 +55,9 @@ def translate_errors(function: _Function, permission: Optional[Permission] = Non
     without one (the text of an unexpected exception may hold what shouldn't leave this machine). So the
     errors pymacos raises on purpose become a :class:`ToolError`: when macOS fails or refuses
     (:class:`macos.MacOSError`: a missing permission, a feature this system lacks...) and when an argument
-    is invalid (:class:`ValueError`) or a file is missing or can't be opened (:class:`OSError`:
-    :class:`FileNotFoundError`, :class:`PermissionError`...). The message starts with the exception's name,
+    is invalid (:class:`ValueError`), a file is missing or can't be opened (:class:`OSError`:
+    :class:`FileNotFoundError`, :class:`PermissionError`...) or something asked for by name isn't
+    there (:class:`LookupError`). The message starts with the exception's name,
     which says what kind of failure it was.
 
     A missing permission (:class:`macos.PermissionDeniedError`) gets more than a message. With
@@ -73,10 +78,29 @@ def translate_errors(function: _Function, permission: Optional[Permission] = Non
                 return function(*args, **kwargs)
         except macos.PermissionDeniedError as error:
             raise ToolError(_permissions.missing(error, permission)) from error
-        except (macos.MacOSError, ValueError, OSError) as error:
+        except (macos.MacOSError, ValueError, OSError, LookupError) as error:
+            if isinstance(error, (KeyError, IndexError)) and not isinstance(error, macos.MacOSError):
+                raise  # a missing key or index is a bug in the code, not something that wasn't found on the Mac
             raise ToolError("{}: {}".format(type(error).__name__, error)) from error
 
     return wrapper  # type: ignore[return-value]
+
+
+def on_main_thread(function: Callable[..., Any]) -> Callable[..., Any]:
+    """
+    Make ``function`` run on the thread the server runs on, which is the process's main thread.
+
+    The server runs a plain function on a worker thread, to stay free for other calls meanwhile, and
+    a coroutine function on its own thread. A few features of macOS only work on the main thread (the
+    geocoder, the camera...), and pymacos refuses them elsewhere: this turns the function into a
+    coroutine function, which is called where they work. While it runs, the server answers nothing else.
+    """
+
+    @functools.wraps(function)
+    async def wrapper(*args: Any, **kwargs: Any) -> Any:
+        return function(*args, **kwargs)
+
+    return wrapper
 
 
 def add_tool(
@@ -86,6 +110,7 @@ def add_tool(
     title: str,
     annotations: ToolAnnotations,
     permission: Optional[Permission] = None,
+    main_thread: bool = False,
 ) -> None:
     """
     Register ``function`` as a tool of ``server``.
@@ -95,16 +120,18 @@ def add_tool(
     are described by the function's annotations.
 
     ``annotations`` says what the tool does to the Mac: one of :data:`READ_ONLY`, :data:`ADDITIVE`,
-    :data:`REPLACING` and :data:`DESTRUCTIVE`. ``permission`` is the privacy permission of macOS the
+    :data:`REPLACING`, :data:`DESTRUCTIVE` and :data:`OPEN_ENDED`. ``permission`` is the privacy permission of macOS the
     tool needs, if any, from :mod:`mcp_server_macos._permissions`: see :func:`translate_errors` for what
-    happens when it's missing.
+    happens when it's missing. ``main_thread`` is for a tool that uses what macOS only allows on the
+    main thread: see :func:`on_main_thread`.
     """
     description = inspect.getdoc(function)
     if not description:
         raise ValueError("the tool {!r} has no docstring to describe it".format(function.__name__))
 
+    tool = translate_errors(function, permission)
     server.add_tool(
-        translate_errors(function, permission),
+        on_main_thread(tool) if main_thread else tool,
         name=function.__name__,
         title=title,
         description=description,
