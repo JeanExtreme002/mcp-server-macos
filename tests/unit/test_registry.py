@@ -146,8 +146,10 @@ async def test_unexpected_error_reaches_the_client_without_its_message() -> None
 def test_annotations_say_what_a_tool_does() -> None:
     every = (_registry.READ_ONLY, _registry.ADDITIVE, _registry.REPLACING, _registry.DESTRUCTIVE)
 
-    # Nothing leaves this Mac.
+    # Nothing leaves this Mac, but what asks a server on the internet, which only reads.
     assert all(annotations.open_world_hint is False for annotations in every)
+    assert _registry.READ_ONLY_ONLINE.open_world_hint is True
+    assert _registry.READ_ONLY_ONLINE.read_only_hint is True
 
     assert _registry.READ_ONLY.read_only_hint is True
     assert [annotations.read_only_hint for annotations in every[1:]] == [False, False, False]

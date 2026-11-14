@@ -8,7 +8,7 @@ from mcp.server.mcpserver import MCPServer
 
 import mcp_server_macos
 from mcp_server_macos import create_server
-from mcp_server_macos._registry import ADDITIVE, DESTRUCTIVE, READ_ONLY, REPLACING
+from mcp_server_macos._registry import ADDITIVE, DESTRUCTIVE, READ_ONLY, READ_ONLY_ONLINE, REPLACING
 from tests.helpers import text
 
 pytestmark = pytest.mark.anyio
@@ -32,6 +32,7 @@ ANNOTATIONS = {
     "wait_for_clipboard_change": READ_ONLY,
     # notifications
     "send_notification": ADDITIVE,
+    "check_notification_permission": READ_ONLY,
     # power
     "get_power_status": READ_ONLY,
     "get_sleep_blockers": READ_ONLY,
@@ -39,8 +40,42 @@ ANNOTATIONS = {
     "allow_sleep": REPLACING,
     "sleep_mac": DESTRUCTIVE,
     "sleep_display": REPLACING,
-    # system
+    # system: what the Mac is
     "get_system_info": READ_ONLY,
+    "get_security_status": READ_ONLY,
+    "list_fonts": READ_ONLY,
+    "list_usb_devices": READ_ONLY,
+    "list_available_updates": READ_ONLY_ONLINE,
+    # system: how it's doing
+    "get_system_status": READ_ONLY,
+    "get_gpu_usage": READ_ONLY,
+    "wait_for_idle": READ_ONLY,
+    "wait_for_user_activity": READ_ONLY,
+    # system: disks
+    "list_volumes": READ_ONLY,
+    "get_disk_health": READ_ONLY,
+    "mount_disk_image": ADDITIVE,
+    "eject_volume": DESTRUCTIVE,
+    "unmount_disk_image": DESTRUCTIVE,
+    # system: processes
+    "list_processes": READ_ONLY,
+    "get_process": READ_ONLY,
+    "list_open_files": READ_ONLY,
+    "find_processes_using": READ_ONLY,
+    "list_ports": READ_ONLY,
+    "find_port_owner": READ_ONLY,
+    "list_connections": READ_ONLY,
+    "get_network_usage": READ_ONLY,
+    "get_energy_usage": READ_ONLY,
+    "kill_process": DESTRUCTIVE,
+    # system: settings
+    "get_system_settings": READ_ONLY,
+    "set_system_settings": REPLACING,
+    "set_menu_bar_settings": REPLACING,
+    # system: diagnostics
+    "list_crash_reports": READ_ONLY,
+    "read_system_log": READ_ONLY,
+    "list_startup_items": READ_ONLY,
     # volume
     "get_volume": READ_ONLY,
     "set_volume": REPLACING,

@@ -7,8 +7,7 @@ from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
 from .._permissions import AUTOMATION
-from .._registry import READ_ONLY, REPLACING, add_tool
-from .clipboard import LONGEST_WAIT
+from .._registry import LONGEST_WAIT, READ_ONLY, REPLACING, add_tool
 
 Mode = Literal["dark", "light"]
 ScrollBars = Literal["automatic", "when_scrolling", "always"]

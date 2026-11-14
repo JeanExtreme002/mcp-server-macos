@@ -18,13 +18,20 @@ from mcp.types import ToolAnnotations
 from . import _permissions
 from ._permissions import Permission
 
+# How long a tool may wait for something to happen, in seconds: a call that never returns is of no
+# use to a client.
+LONGEST_WAIT = 600.0
+
 _Function = TypeVar("_Function", bound=Callable[..., Any])
 
 # What a tool does to the Mac, told to the client so it can decide what to ask the user before a call.
-# None of the tools reaches beyond this Mac (the open-world hint).
+# The open-world hint says whether a tool reaches beyond this Mac: few do.
 
 #: Reads something, changes nothing.
 READ_ONLY = ToolAnnotations(read_only_hint=True, open_world_hint=False)
+
+#: Reads something from a server on the internet (Apple's, for the software updates), changes nothing.
+READ_ONLY_ONLINE = ToolAnnotations(read_only_hint=True, open_world_hint=True)
 
 #: Adds or shows something, without replacing or deleting anything.
 ADDITIVE = ToolAnnotations(read_only_hint=False, destructive_hint=False, idempotent_hint=False, open_world_hint=False)

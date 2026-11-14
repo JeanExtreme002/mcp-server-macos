@@ -27,11 +27,11 @@ def test_toolsets_are_modules_of_pymacos() -> None:
     assert set(tools.TOOLSETS) <= set(pymacos_api.modules())
 
 
-@pytest.mark.parametrize("module", sorted(IN_PROGRESS))
-def test_module_in_progress_really_is(module: str) -> None:
-    # Once nothing is missing, the module comes off the list, so it's held to it from then on.
-    assert module in tools.TOOLSETS
-    assert pymacos_api.coverage(module)[2], "macos.{} is covered: take it off IN_PROGRESS".format(module)
+def test_modules_in_progress_really_are() -> None:
+    # Once nothing is missing, a module comes off the list, so it's held to it from then on.
+    for module in sorted(IN_PROGRESS):
+        assert module in tools.TOOLSETS
+        assert pymacos_api.coverage(module)[2], "macos.{} is covered: take it off IN_PROGRESS".format(module)
 
 
 @pytest.mark.parametrize("function", sorted(EXCLUDED))

@@ -29,7 +29,7 @@ EXCLUDED: Dict[str, str] = {
 }
 
 #: The modules of pymacos that have a toolset, but not yet a tool for everything they do.
-IN_PROGRESS: Set[str] = {"notifications", "system"}
+IN_PROGRESS: Set[str] = set()
 
 
 def modules() -> List[str]:

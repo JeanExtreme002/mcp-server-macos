@@ -128,3 +128,14 @@ async def test_send_notification_says_where_to_turn_notifications_on(
     assert "MCP client" not in text(result)
     # macOS has no prompt to show for it, so nothing was asked and nothing run twice.
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("allowed", [True, False, None])
+async def test_check_notification_permission(client: Client, monkeypatch: pytest.MonkeyPatch, allowed: Any) -> None:
+    # None: macOS can't tell, as when Script Editor has never posted a notification.
+    monkeypatch.setattr(macos.notifications, "is_allowed", lambda: allowed)
+
+    result = await client.call_tool("check_notification_permission", {})
+
+    assert not result.is_error
+    assert result.structured_content == {"allowed": allowed}
