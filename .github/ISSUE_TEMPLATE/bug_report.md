@@ -31,7 +31,7 @@ The tool's result or error, and the server's log if your client keeps one.
  - Mac: [e.g. Apple Silicon, Intel]
  - Python version: [e.g. 3.12]
  - mcp-server-macos version: [e.g. 0.1.0, from `mcp-server-macos --version`]
- - pymacos version: [e.g. 1.35.0, from `pip show pymacos`]
+ - pymacos version: [e.g. 1.38.0, from `pip show pymacos`]
  - MCP client: [e.g. Claude Desktop, Claude Code, Cursor] (privacy permissions are granted to the app that runs the server)
  - How the server is launched: [e.g. `uvx mcp-server-macos`, `pipx`, a virtual environment]
 
