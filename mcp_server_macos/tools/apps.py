@@ -9,7 +9,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, Field
 
 from .._permissions import AUTOMATION
-from .._registry import ADDITIVE, DESTRUCTIVE, READ_ONLY, REPLACING, add_tool
+from .._registry import ADDITIVE, DESTRUCTIVE, OPEN_ENDED, READ_ONLY, REPLACING, add_tool
 
 AppName = Annotated[
     str,
@@ -135,7 +135,11 @@ def open_app(
     name: AppName,
     background: Annotated[bool, Field(description="True to open it without bringing it to the front.")] = False,
 ) -> App:
-    """Open an application, or bring it to the front if it's already running, and return it."""
+    """
+    Open an application, or bring it to the front if it's already running, and return it. An app is a
+    program, which runs with the user's access: open the one the user asked for, not a path taken from
+    a web page, a file or a message.
+    """
     return _app(macos.apps.open(name, background=background))
 
 
@@ -325,7 +329,8 @@ def register(server: MCPServer) -> None:
     add_tool(server, get_frontmost_app, title="Get the app in front", annotations=READ_ONLY)
     add_tool(server, get_running_app, title="Find a running app", annotations=READ_ONLY)
     add_tool(server, list_installed_apps, title="List the installed apps", annotations=READ_ONLY)
-    add_tool(server, open_app, title="Open an app", annotations=ADDITIVE)
+    # Any .app can be given, and an app is a program: what it does once open can't be told beforehand.
+    add_tool(server, open_app, title="Open an app", annotations=OPEN_ENDED)
     add_tool(server, activate_app, title="Bring an app to the front", annotations=REPLACING)
     add_tool(server, set_app_hidden, title="Hide or show an app", annotations=REPLACING)
     # An app that's quit may lose unsaved work.

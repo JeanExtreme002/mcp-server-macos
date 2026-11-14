@@ -35,7 +35,10 @@ class Device(BaseModel):
 class BluetoothStatus(BaseModel):
     """Bluetooth on this Mac."""
 
-    power: Optional[bool] = Field(description="Whether Bluetooth is on. Null on a Mac without Bluetooth.")
+    power: Optional[bool] = Field(
+        description="Whether Bluetooth is on. Null when macOS can't say: a Mac without Bluetooth, or a version of "
+        "macOS that doesn't tell the power, where the devices are still listed."
+    )
     devices: List[Device] = Field(description="The devices paired with this Mac, connected ones first.")
 
 
@@ -54,7 +57,9 @@ def get_bluetooth_status() -> BluetoothStatus:
     try:
         power: Optional[bool] = macos.bluetooth.power()
     except macos.NotSupportedError:
-        return BluetoothStatus(power=None, devices=[])  # a Mac without Bluetooth
+        # A Mac without Bluetooth, or a macOS that doesn't tell the power: the devices come from
+        # elsewhere (system_profiler), and are listed all the same.
+        power = None
     return BluetoothStatus(power=power, devices=[_device(device) for device in macos.bluetooth.devices()])
 
 

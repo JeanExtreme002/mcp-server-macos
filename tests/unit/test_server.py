@@ -27,7 +27,7 @@ ANNOTATIONS = {
     "get_frontmost_app": READ_ONLY,
     "get_running_app": READ_ONLY,
     "list_installed_apps": READ_ONLY,
-    "open_app": ADDITIVE,
+    "open_app": OPEN_ENDED,
     "activate_app": REPLACING,
     "set_app_hidden": REPLACING,
     "quit_app": DESTRUCTIVE,

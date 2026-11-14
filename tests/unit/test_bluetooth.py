@@ -51,6 +51,22 @@ async def test_get_bluetooth_status(client: Client, bluetooth: Recorder) -> None
     assert bluetooth.calls == []
 
 
+async def test_get_bluetooth_status_when_macos_does_not_tell_the_power(
+    client: Client, bluetooth: Recorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The power comes from functions some versions of macOS lack; the devices from system_profiler,
+    # which still lists them.
+    def power() -> bool:
+        raise macos.NotSupportedError("this version of macOS doesn't expose the Bluetooth power")
+
+    monkeypatch.setattr(macos.bluetooth, "power", power)
+
+    result = await client.call_tool("get_bluetooth_status", {})
+
+    assert not result.is_error
+    assert result.structured_content == {"power": None, "devices": LISTED}
+
+
 async def test_get_bluetooth_status_of_a_mac_without_bluetooth(
     client: Client, bluetooth: Recorder, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -58,6 +74,7 @@ async def test_get_bluetooth_status_of_a_mac_without_bluetooth(
         raise macos.NotSupportedError("this Mac has no Bluetooth")
 
     monkeypatch.setattr(macos.bluetooth, "power", power)
+    monkeypatch.setattr(macos.bluetooth, "devices", lambda: [])
 
     result = await client.call_tool("get_bluetooth_status", {})
 
