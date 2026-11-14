@@ -1,71 +1,49 @@
-# mcp-server-macos
+<h1 align="center">mcp-server-macos</h1>
 
-An [MCP](https://modelcontextprotocol.io) server that lets an AI assistant use your Mac, built on
-[pymacos](https://github.com/JeanExtreme002/pymacos).
+<p align="center">
+  <b>Let your AI assistant use your Mac.</b><br>
+  <i>An MCP server for Claude, Cursor and any other MCP client, built on <a href="https://github.com/JeanExtreme002/pymacos">pymacos</a>.</i>
+</p>
 
-<table>
-    <tr>
-        <th>tests</th>
-        <td>
-            <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/lint.yml"><img
-                alt="GitHub Actions build status (Lint)"
-                src="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/lint.yml/badge.svg"></a>
-            <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/test.yml"><img
-                alt="GitHub Actions build status (Test on macOS and Linux)"
-                src="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/test.yml/badge.svg"></a>
-            <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/build.yml"><img
-                alt="GitHub Actions build status (Build: the package built, installed and tested)"
-                src="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/build.yml/badge.svg"></a>
-        </td>
-    </tr>
-    <tr>
-        <th>package</th>
-        <td>
-            <a href="https://pypi.org/project/mcp-server-macos/"><img
-                alt="Newest PyPI version"
-                src="https://img.shields.io/pypi/v/mcp-server-macos.svg"></a>
-            <a href="https://pypi.org/project/mcp-server-macos/"><img
-                alt="Supported Python versions"
-                src="https://img.shields.io/pypi/pyversions/mcp-server-macos.svg?color=8A2BE2"></a>
-            <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img
-                alt="License"
-                src="https://img.shields.io/pypi/l/mcp-server-macos.svg"></a>
-        </td>
-    </tr>
-</table>
+<p align="center">
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/v/mcp-server-macos.svg" alt="Newest PyPI version" /></a>
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/pyversions/mcp-server-macos.svg?color=8A2BE2" alt="Supported Python versions" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="Platform: macOS" />
+  <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
+</p>
 
-> **Early days.** The server works, with two tools to start with. More of pymacos is on its way.
+An assistant can write the script, but it can't tap you on the shoulder when the script is done. It
+can explain how to check which Mac you have, but it can't just look.
 
-## Tools
+mcp-server-macos gives it the Mac it's running on. You add one line to your client, and the
+assistant gets tools that act on your computer, each one saying upfront whether it only reads
+something or does something you'll see.
 
-| Tool | What it does | Changes something? |
-|---|---|---|
-| `get_system_info` | The macOS version and build, the Mac's model, processor, memory and name, and how long it has been running. | No |
-| `send_notification` | Shows a notification, with an optional title, subtitle and sound. | Shows a notification |
+It's a young project. There are two tools today, and the rest of pymacos (apps, clipboard, windows,
+screenshots, OCR, Keychain and a lot more) is on its way, release by release.
 
-Every tool tells the client whether it only reads or changes something (the MCP tool annotations), so
-the client can ask you before a call that does.
+## See it in action
 
-## Requirements
+> *"Run the tests and let me know when they're done. I'm getting coffee."*
+>
+> The tests run, and a notification shows up on your Mac: **Tests finished: 212 passed.**
 
-- macOS. The server starts on other systems, but every tool answers that it needs macOS.
-- Python 3.10 or newer.
+> *"Is this Mac good enough to run that model locally?"*
+>
+> It looks: a MacBook Pro with an Apple M2 Pro and 16 GB of memory, on macOS 15.6. Then it answers
+> for your machine, not for Macs in general.
 
-## Installation
+## Get started
 
-The server is launched by your MCP client, which talks to it over stdin and stdout. With
-[uv](https://docs.astral.sh/uv/), there's nothing to install first: `uvx mcp-server-macos` downloads
-and runs it.
+With [uv](https://docs.astral.sh/uv/) installed, there's nothing to set up first.
 
-### Claude Code
+In Claude Code:
 
 ```bash
 claude mcp add macos -- uvx mcp-server-macos
 ```
 
-### Claude Desktop, and other clients configured with JSON
-
-Add the server to the client's configuration (for Claude Desktop, *Settings › Developer › Edit Config*):
+In Claude Desktop, Cursor and other clients configured with JSON:
 
 ```json
 {
@@ -78,28 +56,51 @@ Add the server to the client's configuration (for Claude Desktop, *Settings › 
 }
 ```
 
-### With pip
+Prefer pip? Run `pip install mcp-server-macos` and use `mcp-server-macos` as the command, with no
+arguments.
 
-```bash
-pip install mcp-server-macos
-```
+Requires macOS and Python 3.10 or newer.
 
-Then use `mcp-server-macos` as the command, with no arguments (or `python -m mcp_server_macos`). If
-the client doesn't find it, give the command's full path, which `which mcp-server-macos` prints.
+## Tools
+
+| Tool | What your assistant can do with it |
+|---|---|
+| `get_system_info` | Know the Mac it's on: the macOS version, the model, the processor, the memory, the computer's name and how long it has been running. |
+| `send_notification` | Show you a notification, with a title, a subtitle and a sound if it wants one. |
+
+Is there a tool you want next? [Open an issue](https://github.com/JeanExtreme002/mcp-server-macos/issues)
+and say what you'd ask your assistant to do with it. That's what decides the order.
+
+## Why this one
+
+- It stands on [pymacos](https://github.com/JeanExtreme002/pymacos), a library for controlling macOS
+  from Python that is tested against a real Mac on every change. The server adds no tricks of its own.
+- What the assistant writes is never pasted into a shell command or a script, so a quote or a `$(...)`
+  in a message is just text.
+- When macOS refuses something because a permission is missing, the assistant is told which one,
+  instead of believing it worked.
+- It opens no network port. It only talks to the app that launched it.
 
 ## Permissions
 
-macOS grants privacy permissions to the app that runs the server (Claude Desktop, your terminal, your
-IDE), not to the server. When a tool lacks one, its error says which.
+macOS gives privacy permissions to the app that runs the server (Claude Desktop, your terminal, your
+editor), not to the server itself.
 
-`send_notification` posts through Script Editor: when notifications are turned off for it in
-*System Settings › Notifications*, the tool reports an error instead of sending one that macOS would drop.
+Notifications are posted through Script Editor. If they're turned off for it in
+*System Settings › Notifications*, `send_notification` says so instead of sending one you'd never see.
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), which
-explains how to add a tool. To report a vulnerability, see [SECURITY.md](SECURITY.md).
+Bug reports, ideas and pull requests are welcome.
+[CONTRIBUTING.md](https://github.com/JeanExtreme002/mcp-server-macos/blob/main/CONTRIBUTING.md) explains
+the setup and how to add a tool, which takes one function and its tests. To report a vulnerability, see
+[SECURITY.md](https://github.com/JeanExtreme002/mcp-server-macos/blob/main/SECURITY.md).
+
+If the project is useful to you, a star helps other people find it.
 
 ## License
 
-[MIT](LICENSE)
+Released under the [MIT License](https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE),
+free for personal and commercial use.
+
+<sub>Not affiliated with or endorsed by Apple Inc. macOS is a trademark of Apple Inc.</sub>
