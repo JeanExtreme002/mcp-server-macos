@@ -1,0 +1,24 @@
+{
+  "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
+  "name": "io.github.JeanExtreme002/mcp-server-macos",
+  "title": "mcp-server-macos",
+  "description": "Let your AI assistant use your Mac: an MCP server for macOS, built on pymacos.",
+  "repository": {
+    "url": "https://github.com/JeanExtreme002/mcp-server-macos",
+    "source": "github"
+  },
+  "websiteUrl": "https://github.com/JeanExtreme002/mcp-server-macos#readme",
+  "version": "0.1.0",
+  "packages": [
+    {
+      "registryType": "pypi",
+      "registryBaseUrl": "https://pypi.org",
+      "identifier": "mcp-server-macos",
+      "version": "0.1.0",
+      "runtimeHint": "uvx",
+      "transport": {
+        "type": "stdio"
+      }
+    }
+  ]
+}

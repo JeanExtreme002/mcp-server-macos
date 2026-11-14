@@ -1,5 +1,7 @@
 <h1 align="center">🍎 mcp-server-macos</h1>
 
+<!-- mcp-name: io.github.JeanExtreme002/mcp-server-macos -->
+
 <p align="center">
   <b>Let your AI assistant use your Mac.</b><br>
   <i>An MCP server for Claude, Cursor and any other MCP client, built on <a href="https://github.com/JeanExtreme002/pymacos">pymacos</a>.</i>
