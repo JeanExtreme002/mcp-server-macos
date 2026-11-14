@@ -6,6 +6,7 @@ import macos
 from mcp.server.mcpserver import MCPServer
 from pydantic import Field
 
+from .._permissions import NOTIFICATIONS
 from .._registry import ADDITIVE, add_tool
 
 
@@ -29,4 +30,4 @@ def send_notification(
 
 
 def register(server: MCPServer) -> None:
-    add_tool(server, send_notification, title="Send a notification", annotations=ADDITIVE)
+    add_tool(server, send_notification, title="Send a notification", annotations=ADDITIVE, permission=NOTIFICATIONS)

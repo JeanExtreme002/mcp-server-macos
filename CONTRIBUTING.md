@@ -28,8 +28,9 @@ npx @modelcontextprotocol/inspector .venv/bin/mcp-server-macos
 mcp_server_macos/
 ├── server.py          create_server(), and main(): the mcp-server-macos command
 ├── _registry.py       add_tool(): how every tool is registered
+├── _permissions.py    the privacy permissions a tool may need, and what happens when one is missing
 └── tools/
-    ├── __init__.py    MODULES: the list of tool modules
+    ├── __init__.py    MODULES: the list of tool modules, which are also the toolsets
     ├── notifications.py
     ├── system.py
     └── ...            one module per module of pymacos
@@ -55,11 +56,26 @@ happens on the Mac is fixed in pymacos, and so is a missing feature.
      sentence, when the tool only acts. Convert what JSON lacks (a `timedelta` to seconds, a `Path` to
      text), and put the unit in the field's name (`memory_bytes`, `uptime_seconds`).
    - Don't catch the errors of pymacos: `add_tool` reports them to the model, with their message.
-3. Register it in the module's `register(server)`, with `add_tool`, a title and the annotations that
-   say what it does to the Mac: `READ_ONLY` or `ADDITIVE`, from `_registry.py`. A tool that replaces
-   or deletes something needs annotations of its own, with the destructive hint on.
+3. Register it in the module's `register(server)`, with `add_tool` and a title, and say two things
+   about it:
+   - `annotations`: what it does to the Mac, which a client uses to decide when to ask the user first.
+     One of `READ_ONLY` (changes nothing), `ADDITIVE` (adds or shows something), `REPLACING` (sets
+     something to a given value) and `DESTRUCTIVE` (deletes, or can't be taken back), from
+     `_registry.py`. When in doubt between two, take the more cautious one.
+   - `permission`: the privacy permission of macOS it needs, if any, from `_permissions.py`
+     (`SCREEN_RECORDING`, `ACCESSIBILITY`...). The pymacos docs list
+     [which feature needs which](https://macos.readthedocs.io/en/latest/permissions.html). When the
+     permission is missing, the server asks macOS to show its prompt and runs the tool again if that
+     granted it; otherwise the model is told what the user has to allow, and where.
 4. Test it (below), and add its name to `TOOLS` in `tests/unit/test_server.py`. The README doesn't list
    the tools: a client shows them, with their descriptions.
+
+## Toolsets
+
+Each module of `mcp_server_macos/tools` is a toolset, named after it. The server offers them all by
+default, and only the ones named when started with `--toolsets system,notifications` (or with the
+`MCP_SERVER_MACOS_TOOLSETS` environment variable), for a client or a user that doesn't want every tool
+listed. A new module needs nothing more than being in `MODULES` to become one.
 
 ## Tests
 
