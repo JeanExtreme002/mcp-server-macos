@@ -210,6 +210,9 @@ async def test_diagnostics(client: Client) -> None:
         assert item["path"].endswith(".plist")
 
 
-async def test_waiting_for_a_mac_that_is_not_left_alone(client: Client) -> None:
-    # Ten minutes without a touch can't be seen in half a second: the time runs out, which isn't an error.
-    assert await call(client, "wait_for_idle", {"idle_seconds": 600, "timeout_seconds": 0.5}) == {"idle": False}
+async def test_waiting_for_the_mac_to_be_left_alone(client: Client) -> None:
+    # Either answer is right: nobody touched the Mac in the last ten minutes (a machine running the
+    # tests unattended), or the half second ran out. The unit tests hold each to its case.
+    waited = await call(client, "wait_for_idle", {"idle_seconds": 600, "timeout_seconds": 0.5})
+
+    assert waited in ({"idle": True}, {"idle": False})
