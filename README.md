@@ -50,17 +50,6 @@ arguments.
 
 Requires macOS and Python 3.10 or newer.
 
-## See it in action
-
-> *"Run the tests and let me know when they're done. I'm getting coffee."*
->
-> The tests run, and a notification shows up on your Mac: **Tests finished: 212 passed.**
-
-> *"Is this Mac good enough to run that model locally?"*
->
-> It looks: a MacBook Pro with an Apple M2 Pro and 16 GB of memory, on macOS 15.6. Then it answers
-> for your machine, not for Macs in general.
-
 ## Permissions
 
 macOS gives privacy permissions to the app that runs the server (Claude Desktop, your terminal, your
