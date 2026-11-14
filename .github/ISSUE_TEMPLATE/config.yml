@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security vulnerability
+    url: https://github.com/JeanExtreme002/mcp-server-macos/security/advisories/new
+    about: Please report a suspected vulnerability privately, not in a public issue (see SECURITY.md).
+  - name: A bug in what a tool does on the Mac
+    url: https://github.com/JeanExtreme002/pymacos/issues
+    about: The tools call pymacos. If the same call fails in Python, without the server, report it there.

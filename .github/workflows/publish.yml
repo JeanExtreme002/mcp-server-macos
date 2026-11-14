@@ -8,16 +8,30 @@ permissions:
   contents: read
 
 jobs:
+  # The distributions are built once, here, and what reaches PyPI is exactly
+  # what was checked and tested: never a second build of the same commit.
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
     - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+      with:
+        fetch-depth: 0  # the whole history, to tell whether the tag is on main
     - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
       with:
         python-version: '3.12'
+    # Releases are made from main: a tag on a branch never merged would use up
+    # its version on PyPI, for good, with code main never had.
+    - name: Check the tag is on main
+      run: |
+        git fetch --no-tags origin main
+        if ! git merge-base --is-ancestor "$GITHUB_SHA" FETCH_HEAD; then
+          echo "::error::Release tag $GITHUB_REF_NAME ($GITHUB_SHA) is not on main"
+          exit 1
+        fi
     # A PyPI version can never be uploaded twice, so refuse to publish when the
-    # release tag and the package version disagree.
+    # release tag and the package version disagree (e.g. tag v0.2.0 while
+    # mcp_server_macos/__init__.py still says 0.1.0).
     - name: Check the tag matches the package version
       run: |
         version=$(python -c "import re; print(re.search(r'__version__ = \"(.+?)\"', open('mcp_server_macos/__init__.py').read()).group(1))")
@@ -31,13 +45,49 @@ jobs:
       run: python -m build
     - name: Check the metadata PyPI reads
       run: twine check --strict dist/*
+    - name: Check what the wheel holds
+      run: python .github/wheel_check.py
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9  # v7
       with:
         name: dist
         path: dist/
 
-  publish:
+  # The whole suite, live tests included, against the wheel just built,
+  # installed with the source folder gone: nothing reaches PyPI from a build
+  # whose tests fail.
+  test:
     needs: build
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1  # v7
+    - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97  # v7
+      with:
+        python-version: '3.12'
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333  # v8
+      with:
+        name: dist
+        path: dist/
+    - name: Install the wheel in a clean environment
+      run: |
+        python -m venv /tmp/env
+        /tmp/env/bin/python -m pip install --upgrade pip pytest pytest-rerunfailures
+        /tmp/env/bin/python -m pip install dist/*.whl
+        rm -rf mcp_server_macos
+    - name: Check it's the installed package that's imported, and that its command runs
+      run: |
+        /tmp/env/bin/python -c "import mcp_server_macos as m, sys; print(m.__version__, m.__file__); sys.exit('site-packages' not in m.__file__)"
+        /tmp/env/bin/mcp-server-macos --version
+    - name: Unit tests
+      run: /tmp/env/bin/python -m pytest tests/unit -v
+    - name: Live tests
+      # Retried once, as on pull requests: the runner is shared. The unit tests never are.
+      run: /tmp/env/bin/python -m pytest tests/live -v -rsR --reruns 1 --reruns-delay 5
+
+  # The publish action only runs on Linux, hence a separate job. It uploads the
+  # artifact the jobs above checked and tested, untouched.
+  publish:
+    needs: [build, test]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     environment: pypi

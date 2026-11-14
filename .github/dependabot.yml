@@ -1,0 +1,23 @@
+# https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+
+updates:
+  # The runtime dependencies (mcp, pymacos) are ranges in pyproject.toml, with no lock file: a release
+  # inside a range needs no pull request, and the weekly run of the Test workflow checks main against
+  # it. Dependabot opens one when a release falls outside a range (the next major), which is when the
+  # server has to be checked, and maybe changed, before the range is widened.
+  - package-ecosystem: "pip"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    versioning-strategy: "increase-if-necessary"
+    open-pull-requests-limit: 5
+
+  # The actions are pinned by commit SHA (with the tag as a comment), so
+  # Dependabot is what moves them: it bumps the SHA and the comment together.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5

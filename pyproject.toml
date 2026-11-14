@@ -11,22 +11,85 @@ maintainers = [
 license = "MIT"
 license-files = ["LICENSE*"]
 readme = "README.md"
-keywords = ["mcp", "model-context-protocol", "mcp-server", "macos", "mac", "automation"]
+keywords = [
+    "mcp",
+    "mcp-server",
+    "model-context-protocol",
+    "macos",
+    "mac",
+    "osx",
+    "automation",
+    "desktop-automation",
+    "pymacos",
+    "claude",
+    "llm",
+    "ai-agents",
+]
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
     "Operating System :: MacOS :: MacOS X",
     "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
     "Topic :: Desktop Environment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: System",
+    "Topic :: Utilities",
+    "Typing :: Typed",
 ]
+# 3.10 is the oldest Python the MCP SDK runs on (pymacos itself goes back to 3.9).
 requires-python = ">=3.10"
-dependencies = []
+# Both follow Semantic Versioning, so the next major release of either is held back until the server is
+# checked against it. pydantic comes with mcp, at the version mcp needs: it's used here only through it.
+dependencies = [
+    "mcp>=2.3,<3",
+    "pymacos>=1.38,<2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "pytest-rerunfailures",
+    "flake8",
+    "mypy",
+    "build",
+    "twine",
+]
+
+[project.scripts]
+mcp-server-macos = "mcp_server_macos.server:main"
 
 [project.urls]
 Homepage = "https://github.com/JeanExtreme002/mcp-server-macos"
 Source = "https://github.com/JeanExtreme002/mcp-server-macos"
 Issues = "https://github.com/JeanExtreme002/mcp-server-macos/issues"
+Funding = "https://github.com/sponsors/JeanExtreme002"
+
+[tool.mypy]
+strict = true
+warn_unused_ignores = true
+
+[tool.pytest.ini_options]
+# -rs: the live tests skip themselves outside macOS, or when macOS refuses; listing them tells a full
+# run from a green one with gaps.
+addopts = "-rs"
+xfail_strict = true
+markers = [
+    "live: talks to the real system (macOS only); shows a notification",
+]
+
+[tool.coverage.run]
+source = ["mcp_server_macos"]
+
+[tool.coverage.report]
+show_missing = true
+skip_empty = true
 
 [tool.hatch.version]
 path = "mcp_server_macos/__init__.py"
@@ -35,7 +98,7 @@ path = "mcp_server_macos/__init__.py"
 packages = ["mcp_server_macos"]
 
 [tool.hatch.build.targets.sdist]
-exclude = ["/.github"]
+exclude = ["/.github", "/codecov.yml", "/Makefile"]
 
 # hatchling>=1.27 is required for the PEP 639 ``license``/``license-files`` metadata.
 [build-system]
