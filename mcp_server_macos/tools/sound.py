@@ -88,9 +88,12 @@ def set_sound_settings(
         raise ValueError("no setting was given: say which one to change")
     if alert_sound is not None and alert_sound != "default":
         # Checked before anything is changed, so a wrong name doesn't leave the settings half applied.
+        # The name is taken in any case, and given to pymacos as macOS spells it: pymacos wants it exact.
         names = macos.sound.names()
-        if alert_sound.casefold() not in (name.casefold() for name in names):
+        spelled = {name.casefold(): name for name in names}
+        if alert_sound.casefold() not in spelled:
             raise ValueError("alert_sound must be 'default' or one of {}, not {!r}".format(", ".join(names), alert_sound))
+        alert_sound = spelled[alert_sound.casefold()]
 
     changed: List[str] = []
     if alert_sound is not None:

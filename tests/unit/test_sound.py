@@ -106,7 +106,9 @@ async def test_play_alert_beep(client: Client, sound: Recorder) -> None:
     "arguments, calls, said",
     [
         ({"alert_sound": "Glass"}, [("set_alert_sound", ("Glass",), {})], "alert sound"),
-        ({"alert_sound": "glass"}, [("set_alert_sound", ("glass",), {})], "alert sound"),
+        # In any case, and given to pymacos as macOS spells it: its setter takes the exact name only.
+        ({"alert_sound": "glass"}, [("set_alert_sound", ("Glass",), {})], "alert sound"),
+        ({"alert_sound": "PING"}, [("set_alert_sound", ("Ping",), {})], "alert sound"),
         ({"alert_sound": "default"}, [("set_alert_sound", (None,), {})], "alert sound"),
         ({"alert_volume": 30}, [("set_alert_volume", (0.3,), {})], "alert volume"),
         ({"alert_volume": 0}, [("set_alert_volume", (0.0,), {})], "alert volume"),
