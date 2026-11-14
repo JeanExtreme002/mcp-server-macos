@@ -12,8 +12,9 @@ from tests.helpers import text
 
 pytestmark = pytest.mark.anyio
 
-# Every tool, by name. A new tool is added here: a client finds tools by name, so renaming or
-# dropping one breaks whoever relies on it, and shouldn't happen unnoticed.
+# Every tool, by name. A new tool is added here, and only here (test_stdio.py uses this list too): a
+# client finds tools by name, so renaming or dropping one breaks whoever relies on it, and shouldn't
+# happen unnoticed.
 TOOLS = {"get_system_info", "send_notification"}
 
 
