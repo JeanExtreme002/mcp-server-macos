@@ -97,6 +97,12 @@ AUTOMATION = Permission(
     where="System Settings › Privacy & Security › Automation",
 )
 
+#: Connecting devices and turning Bluetooth on or off. macOS may ask by itself, the first time.
+BLUETOOTH = Permission(
+    name="Bluetooth",
+    where="System Settings › Privacy & Security › Bluetooth",
+)
+
 FULL_DISK_ACCESS = Permission(
     name="Full Disk Access",
     where="System Settings › Privacy & Security › Full Disk Access",
