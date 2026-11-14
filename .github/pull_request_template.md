@@ -9,7 +9,7 @@ problem the pull request solves or what new features it implements.
 
 - [ ] Added tests as necessary.
 - [ ] There is no breaking change for existing tools (name, arguments, result).
-- [ ] Updated the README, if a tool was added or changed.
+- [ ] Updated the docs, if how the server is installed or set up changed.
 
 **References:**
 

@@ -25,7 +25,7 @@ help:
 	@echo "  $(YELLOW)install-dev$(NC)      - Install the package with development dependencies"
 	@echo ""
 	@echo "Checks:"
-	@echo "  $(YELLOW)test$(NC)             - Run the unit and live tests (the live ones show a notification)"
+	@echo "  $(YELLOW)test$(NC)             - Run the unit and live tests (the live ones really act on this Mac)"
 	@echo "  $(YELLOW)test-unit$(NC)        - Run the unit tests only (safe: nothing on this Mac changes)"
 	@echo "  $(YELLOW)test-live$(NC)        - Run the live tests only"
 	@echo "  $(YELLOW)test-coverage$(NC)    - Run the unit tests with a coverage report, failing under the $(COVERAGE_MIN)% CI gates on"
@@ -61,7 +61,8 @@ install-dev:
 	@echo "$(GREEN)Installing development dependencies...$(NC)"
 	$(PIP) install -e ".[dev]"
 
-# The unit tests and the live ones, which call the tools against this Mac: a notification shows up.
+# The unit tests and the live ones, which call the tools against this Mac: what they do really
+# happens (a notification shows up, for example).
 .PHONY: test
 test:
 	@echo "$(GREEN)Running the unit and live tests...$(NC)"

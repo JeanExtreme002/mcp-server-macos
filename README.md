@@ -1,71 +1,39 @@
-# mcp-server-macos
+<h1 align="center">🍎 mcp-server-macos</h1>
 
-An [MCP](https://modelcontextprotocol.io) server that lets an AI assistant use your Mac, built on
-[pymacos](https://github.com/JeanExtreme002/pymacos).
+<p align="center">
+  <b>Let your AI assistant use your Mac.</b><br>
+  <i>An MCP server for Claude, Cursor and any other MCP client, built on <a href="https://github.com/JeanExtreme002/pymacos">pymacos</a>.</i>
+</p>
 
-<table>
-    <tr>
-        <th>tests</th>
-        <td>
-            <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/lint.yml"><img
-                alt="GitHub Actions build status (Lint)"
-                src="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/lint.yml/badge.svg"></a>
-            <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/test.yml"><img
-                alt="GitHub Actions build status (Test on macOS and Linux)"
-                src="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/test.yml/badge.svg"></a>
-            <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/build.yml"><img
-                alt="GitHub Actions build status (Build: the package built, installed and tested)"
-                src="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/build.yml/badge.svg"></a>
-        </td>
-    </tr>
-    <tr>
-        <th>package</th>
-        <td>
-            <a href="https://pypi.org/project/mcp-server-macos/"><img
-                alt="Newest PyPI version"
-                src="https://img.shields.io/pypi/v/mcp-server-macos.svg"></a>
-            <a href="https://pypi.org/project/mcp-server-macos/"><img
-                alt="Supported Python versions"
-                src="https://img.shields.io/pypi/pyversions/mcp-server-macos.svg?color=8A2BE2"></a>
-            <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img
-                alt="License"
-                src="https://img.shields.io/pypi/l/mcp-server-macos.svg"></a>
-        </td>
-    </tr>
-</table>
+<p align="center">
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-server-blue.svg" alt="MCP server" /></a>
+  <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/JeanExtreme002/mcp-server-macos/test.yml?branch=main&amp;label=CI" alt="CI: tests on macOS and Linux" /></a>
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/v/mcp-server-macos.svg" alt="Newest PyPI version" /></a>
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/badge/python-3.10+-8A2BE2.svg" alt="Python 3.10 or newer" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="Platform: macOS" />
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/status/mcp-server-macos.svg" alt="Development status" /></a>
+  <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
+</p>
 
-> **Early days.** The server works, with two tools to start with. More of pymacos is on its way.
+<br>
 
-## Tools
+Add it in a minute, and your assistant stops explaining what to do on your Mac and starts doing it.
 
-| Tool | What it does | Changes something? |
-|---|---|---|
-| `get_system_info` | The macOS version and build, the Mac's model, processor, memory and name, and how long it has been running. | No |
-| `send_notification` | Shows a notification, with an optional title, subtitle and sound. | Shows a notification |
+## Get started
 
-Every tool tells the client whether it only reads or changes something (the MCP tool annotations), so
-the client can ask you before a call that does.
+With [uv](https://docs.astral.sh/uv/) installed, there's nothing to set up first.
 
-## Requirements
-
-- macOS. The server starts on other systems, but every tool answers that it needs macOS.
-- Python 3.10 or newer.
-
-## Installation
-
-The server is launched by your MCP client, which talks to it over stdin and stdout. With
-[uv](https://docs.astral.sh/uv/), there's nothing to install first: `uvx mcp-server-macos` downloads
-and runs it.
-
-### Claude Code
+In **Claude Code**:
 
 ```bash
 claude mcp add macos -- uvx mcp-server-macos
 ```
 
-### Claude Desktop, and other clients configured with JSON
+In **Cursor**, one click:
 
-Add the server to the client's configuration (for Claude Desktop, *Settings › Developer › Edit Config*):
+<a href="https://cursor.com/en/install-mcp?name=macos&amp;config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyJtY3Atc2VydmVyLW1hY29zIl19"><img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Add mcp-server-macos to Cursor" height="32" /></a>
+
+In **Claude Desktop** and other clients configured with JSON:
 
 ```json
 {
@@ -78,28 +46,30 @@ Add the server to the client's configuration (for Claude Desktop, *Settings › 
 }
 ```
 
-### With pip
+No uv? `pip install mcp-server-macos`, then use `mcp-server-macos` as the command.
 
-```bash
-pip install mcp-server-macos
-```
-
-Then use `mcp-server-macos` as the command, with no arguments (or `python -m mcp_server_macos`). If
-the client doesn't find it, give the command's full path, which `which mcp-server-macos` prints.
+Requires macOS and Python 3.10 or newer.
 
 ## Permissions
 
-macOS grants privacy permissions to the app that runs the server (Claude Desktop, your terminal, your
-IDE), not to the server. When a tool lacks one, its error says which.
+macOS gives privacy permissions to the app that runs the server (Claude Desktop, your terminal, your
+editor), not to the server itself.
 
-`send_notification` posts through Script Editor: when notifications are turned off for it in
-*System Settings › Notifications*, the tool reports an error instead of sending one that macOS would drop.
+When a tool needs a permission that's missing, it tells the assistant which one, instead of failing
+silently.
 
 ## Contributing
 
-Bug reports, ideas and pull requests are welcome: see [CONTRIBUTING.md](CONTRIBUTING.md), which
-explains how to add a tool. To report a vulnerability, see [SECURITY.md](SECURITY.md).
+Bug reports, ideas and pull requests are welcome.
+[CONTRIBUTING.md](https://github.com/JeanExtreme002/mcp-server-macos/blob/main/CONTRIBUTING.md) explains
+the setup and how to add a tool, which takes one function and its tests. To report a vulnerability, see
+[SECURITY.md](https://github.com/JeanExtreme002/mcp-server-macos/blob/main/SECURITY.md).
+
+If the project is useful to you, a star helps other people find it.
 
 ## License
 
-[MIT](LICENSE)
+Released under the [MIT License](https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE),
+free for personal and commercial use.
+
+<sub>Not affiliated with or endorsed by Apple Inc. macOS is a trademark of Apple Inc.</sub>

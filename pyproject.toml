@@ -81,7 +81,7 @@ warn_unused_ignores = true
 addopts = "-rs"
 xfail_strict = true
 markers = [
-    "live: talks to the real system (macOS only); shows a notification",
+    "live: talks to the real system (macOS only); what the tools do really happens on this Mac",
 ]
 
 [tool.coverage.run]
