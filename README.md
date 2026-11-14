@@ -61,26 +61,6 @@ Requires macOS and Python 3.10 or newer.
 > It looks: a MacBook Pro with an Apple M2 Pro and 16 GB of memory, on macOS 15.6. Then it answers
 > for your machine, not for Macs in general.
 
-## Tools
-
-| Tool | What your assistant can do with it |
-|---|---|
-| `get_system_info` | Know the Mac it's on: the macOS version, the model, the processor, the memory, the computer's name and how long it has been running. |
-| `send_notification` | Show you a notification, with a title, a subtitle and a sound if it wants one. |
-
-Is there a tool you want next? [Open an issue](https://github.com/JeanExtreme002/mcp-server-macos/issues)
-and say what you'd ask your assistant to do with it. That's what decides the order.
-
-## Why this one
-
-- It stands on [pymacos](https://github.com/JeanExtreme002/pymacos), a library for controlling macOS
-  from Python that is tested against a real Mac on every change. The server adds no tricks of its own.
-- What the assistant writes is never pasted into a shell command or a script, so a quote or a `$(...)`
-  in a message is just text.
-- When macOS refuses something because a permission is missing, the assistant is told which one,
-  instead of believing it worked.
-- It opens no network port. It only talks to the app that launched it.
-
 ## Permissions
 
 macOS gives privacy permissions to the app that runs the server (Claude Desktop, your terminal, your
