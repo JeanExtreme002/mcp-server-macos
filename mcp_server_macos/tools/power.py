@@ -1,6 +1,7 @@
 """Tools for the battery, sleep and keeping the Mac awake, from ``macos.power``."""
 
 import threading
+import weakref
 from contextlib import AbstractContextManager
 from datetime import datetime
 from typing import Annotated, Any, List, Optional
@@ -137,11 +138,12 @@ def sleep_display() -> str:
 
 class _Awake:
     """
-    The one request this server holds to keep the Mac awake, and the timer that ends it.
+    The one request a server holds to keep the Mac awake, the timer that ends it, and the two tools
+    that start and end it.
 
     pymacos keeps the Mac awake for the length of a ``with`` block. A tool call is over long before
     that should end, so the block is entered by one call and left by a timer, or by another call.
-    macOS drops the request by itself if the server stops.
+    Each server has its own, which is let go when the server is: see :func:`register`.
     """
 
     def __init__(self) -> None:
@@ -149,22 +151,51 @@ class _Awake:
         self._held: Optional[AbstractContextManager[Any]] = None
         self._timer: Optional[threading.Timer] = None
 
-    def hold(self, seconds: float, display: bool) -> None:
-        """Keep the Mac awake for ``seconds``, in place of what was held before."""
+    def keep_awake(
+        self,
+        minutes: Annotated[
+            float,
+            Field(description="How long to keep the Mac awake, in minutes: up to 1440, a day.", gt=0, le=1440),
+        ],
+        display: Annotated[
+            bool, Field(description="True to keep the display on too. By default it may still turn off.")
+        ] = False,
+    ) -> str:
+        """
+        Keep the Mac from going to sleep on its own for some time, for a download or a long job to finish.
+        Calling it again replaces the time left, and allow_sleep ends it early. It lasts while this server
+        runs, and closing a laptop's lid still puts it to sleep.
+        """
         with self._lock:
             # The new one first: if macOS refuses it, the one held before stays.
             held = macos.power.keep_awake(display=display, reason="mcp-server-macos keep_awake")
             held.__enter__()
             self._release()
             self._held = held
-            self._timer = threading.Timer(seconds, self.release)
+            # The timer ends this hold and no other: one that fires while a later call is replacing
+            # its hold has started already, past cancelling, and must not end the new one.
+            self._timer = threading.Timer(minutes * 60, self._expire, args=(held,))
             self._timer.daemon = True  # a server that's stopping doesn't wait for it
             self._timer.start()
+        return "The Mac will stay awake for {:g} minute{}{}.".format(
+            minutes, "" if minutes == 1 else "s", ", with the display on" if display else ""
+        )
+
+    def allow_sleep(self) -> str:
+        """Let the Mac sleep on its own again, ending what keep_awake started."""
+        if self.release():
+            return "The Mac may sleep again."
+        return "The Mac wasn't being kept awake by this server."
 
     def release(self) -> bool:
         """Let the Mac sleep again. Return whether it was being kept awake."""
         with self._lock:
             return self._release()
+
+    def _expire(self, held: AbstractContextManager[Any]) -> None:
+        with self._lock:
+            if self._held is held:
+                self._release()
 
     def _release(self) -> bool:
         held, timer, self._held, self._timer = self._held, self._timer, None, None
@@ -176,41 +207,17 @@ class _Awake:
         return True
 
 
-_awake = _Awake()
-
-
-def keep_awake(
-    minutes: Annotated[
-        float,
-        Field(description="How long to keep the Mac awake, in minutes: up to 1440, a day.", gt=0, le=1440),
-    ],
-    display: Annotated[
-        bool, Field(description="True to keep the display on too. By default it may still turn off.")
-    ] = False,
-) -> str:
-    """
-    Keep the Mac from going to sleep on its own for some time, for a download or a long job to finish.
-    Calling it again replaces the time left, and allow_sleep ends it early. It lasts while this server
-    runs, and closing a laptop's lid still puts it to sleep.
-    """
-    _awake.hold(minutes * 60, display)
-    return "The Mac will stay awake for {:g} minute{}{}.".format(
-        minutes, "" if minutes == 1 else "s", ", with the display on" if display else ""
-    )
-
-
-def allow_sleep() -> str:
-    """Let the Mac sleep on its own again, ending what keep_awake started."""
-    if _awake.release():
-        return "The Mac may sleep again."
-    return "The Mac wasn't being kept awake by this server."
-
-
 def register(server: MCPServer) -> None:
     add_tool(server, get_power_status, title="Get the battery and power status", annotations=READ_ONLY)
     add_tool(server, get_sleep_blockers, title="List what keeps the Mac awake", annotations=READ_ONLY)
-    add_tool(server, keep_awake, title="Keep the Mac awake", annotations=REPLACING)
-    add_tool(server, allow_sleep, title="Let the Mac sleep again", annotations=REPLACING)
+
+    # What a server keeps awake is its own, and ends with it: when the server is let go of, or Python
+    # exits. macOS drops it by itself if the process dies.
+    awake = _Awake()
+    weakref.finalize(server, awake.release)
+    add_tool(server, awake.keep_awake, title="Keep the Mac awake", annotations=REPLACING)
+    add_tool(server, awake.allow_sleep, title="Let the Mac sleep again", annotations=REPLACING)
+
     # Sleep stops whatever is running, the connection to the client included.
     add_tool(server, sleep_mac, title="Put the Mac to sleep", annotations=DESTRUCTIVE)
     add_tool(server, sleep_display, title="Turn the display off", annotations=REPLACING)

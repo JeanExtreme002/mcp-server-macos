@@ -16,13 +16,19 @@ pytestmark = pytest.mark.anyio
 
 @pytest.fixture
 async def restored() -> AsyncIterator[None]:
-    """Put back the text the clipboard held (an image or files on it are lost, as in pymacos's own tests)."""
+    """
+    Put back the text the clipboard held (an image or files on it are lost, as in pymacos's own tests).
+
+    It's put back as sensitive: it may be a password that was copied as one, and whether it was can't
+    be read back. Marked so without need, a text only stays out of clipboard managers' histories;
+    left unmarked, a password would get into them.
+    """
     before = macos.clipboard.paste()
     yield
     if before is None:
         macos.clipboard.clear()
     else:
-        macos.clipboard.copy(before)
+        macos.clipboard.copy(before, sensitive=True)
 
 
 @pytest.mark.usefixtures("restored")

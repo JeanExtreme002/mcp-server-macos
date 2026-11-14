@@ -2,13 +2,14 @@
 
 import threading
 from datetime import datetime, timedelta
-from typing import Any, Callable, Dict, List, Optional
+import gc
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import macos
 import pytest
 from mcp import Client
 
-from mcp_server_macos.tools import power
+from mcp_server_macos import create_server
 from tests.helpers import Recorder, text
 
 pytestmark = pytest.mark.anyio
@@ -189,9 +190,10 @@ class Timer:
 
     made: List["Timer"] = []
 
-    def __init__(self, seconds: float, function: Callable[[], Any]) -> None:
+    def __init__(self, seconds: float, function: Callable[..., Any], args: Tuple[Any, ...] = ()) -> None:
         self.seconds = seconds
         self.function = function
+        self.args = args
         self.daemon = False
         self.started = False
         self.cancelled = False
@@ -202,6 +204,10 @@ class Timer:
 
     def cancel(self) -> None:
         self.cancelled = True
+
+    def fire(self) -> None:
+        """What the timer's thread does when its time is up, cancelled or not: too late to stop it."""
+        self.function(*self.args)
 
 
 class Awake:
@@ -229,7 +235,6 @@ def awake(monkeypatch: pytest.MonkeyPatch) -> Awake:
     monkeypatch.setattr(Timer, "made", [])
     monkeypatch.setattr(macos.power, "keep_awake", state.keep_awake)
     monkeypatch.setattr(threading, "Timer", Timer)
-    monkeypatch.setattr(power, "_awake", power._Awake())  # nothing held from another test
     return state
 
 
@@ -257,7 +262,7 @@ async def test_keep_awake_ends_when_its_time_is_up(client: Client, awake: Awake)
     await client.call_tool("keep_awake", {"minutes": 0.5})
     assert awake.timers[0].seconds == 30
 
-    awake.timers[0].function()  # the timer fires
+    awake.timers[0].fire()
 
     assert awake.log == ["hold 1 entered", "hold 1 left"]
     result = await client.call_tool("allow_sleep", {})
@@ -279,6 +284,65 @@ async def test_keep_awake_again_replaces_the_time_left(client: Client, awake: Aw
     await client.call_tool("allow_sleep", {})
     assert awake.log == ["hold 1 entered", "hold 2 entered", "hold 1 left", "hold 2 left"]
     assert second.cancelled
+
+
+async def test_timer_of_a_hold_that_was_replaced_does_not_end_the_new_one(client: Client, awake: Awake) -> None:
+    # The first timer's time is up while the second call is replacing its hold: its thread has started,
+    # so cancelling it comes too late, and it runs as soon as the second call is done.
+    await client.call_tool("keep_awake", {"minutes": 10})
+    await client.call_tool("keep_awake", {"minutes": 20})
+    first, second = awake.timers
+
+    first.fire()
+
+    assert awake.log == ["hold 1 entered", "hold 2 entered", "hold 1 left"]
+    assert not second.cancelled
+
+    second.fire()
+    assert awake.log == ["hold 1 entered", "hold 2 entered", "hold 1 left", "hold 2 left"]
+
+
+async def test_timer_that_fires_after_sleep_was_allowed_does_nothing(client: Client, awake: Awake) -> None:
+    await client.call_tool("keep_awake", {"minutes": 10})
+    await client.call_tool("allow_sleep", {})
+
+    awake.timers[0].fire()
+
+    assert awake.log == ["hold 1 entered", "hold 1 left"]
+
+
+async def test_each_server_keeps_the_mac_awake_on_its_own(awake: Awake) -> None:
+    async with Client(create_server()) as first, Client(create_server()) as second:
+        await first.call_tool("keep_awake", {"minutes": 10})
+        await second.call_tool("keep_awake", {"minutes": 20})
+        # Two holds, neither replacing the other.
+        assert awake.log == ["hold 1 entered", "hold 2 entered"]
+
+        result = await second.call_tool("allow_sleep", {})
+        assert text(result) == "The Mac may sleep again."
+        assert awake.log == ["hold 1 entered", "hold 2 entered", "hold 2 left"]
+
+        result = await second.call_tool("allow_sleep", {})
+        assert text(result) == "The Mac wasn't being kept awake by this server."
+
+        result = await first.call_tool("allow_sleep", {})
+        assert text(result) == "The Mac may sleep again."
+
+    assert awake.log == ["hold 1 entered", "hold 2 entered", "hold 2 left", "hold 1 left"]
+
+
+async def test_server_that_is_let_go_of_lets_the_mac_sleep(awake: Awake) -> None:
+    # A server run inside a longer program: once it's over and gone, nothing it asked for stays.
+    server = create_server()
+    async with Client(server) as client:
+        await client.call_tool("keep_awake", {"minutes": 1440})
+    assert awake.log == ["hold 1 entered"]
+
+    del client, server
+    gc.collect()
+
+    assert awake.log == ["hold 1 entered", "hold 1 left"]
+    assert awake.timers[0].cancelled
 
 
 async def test_allow_sleep(client: Client, awake: Awake) -> None:
