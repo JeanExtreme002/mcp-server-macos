@@ -7,11 +7,7 @@ from mcp.server.mcpserver import Image, MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, Field
 
-from .._registry import READ_ONLY, REPLACING, add_tool
-
-# How long a tool may wait for something to happen, in seconds: a call that never returns is of no
-# use to a client.
-LONGEST_WAIT = 600.0
+from .._registry import LONGEST_WAIT, READ_ONLY, REPLACING, add_tool
 
 
 class Clipboard(BaseModel):

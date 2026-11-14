@@ -24,3 +24,11 @@ async def test_send_notification_refuses_an_unknown_sound(client: Client) -> Non
 
     assert result.is_error
     assert "ValueError" in text(result)
+
+
+async def test_check_notification_permission(client: Client) -> None:
+    result = await client.call_tool("check_notification_permission", {})
+
+    assert not result.is_error, text(result)
+    assert result.structured_content is not None
+    assert result.structured_content["allowed"] in (True, False, None)
