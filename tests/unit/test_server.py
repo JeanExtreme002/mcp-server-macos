@@ -30,6 +30,27 @@ ANNOTATIONS = {
     "copy_image_to_clipboard": REPLACING,
     "clear_clipboard": REPLACING,
     "wait_for_clipboard_change": READ_ONLY,
+    # defaults
+    "list_preference_keys": READ_ONLY,
+    "read_preference": READ_ONLY,
+    "write_preference": REPLACING,
+    "delete_preference": DESTRUCTIVE,
+    # language
+    "detect_language": READ_ONLY,
+    "analyze_sentiment": READ_ONLY,
+    "compare_texts": READ_ONLY,
+    "embed_text": READ_ONLY,
+    "find_entities": READ_ONLY,
+    "extract_keywords": READ_ONLY,
+    # network
+    "get_network_status": READ_ONLY,
+    "list_network_interfaces": READ_ONLY,
+    "get_bandwidth": READ_ONLY,
+    "run_speed_test": READ_ONLY_ONLINE,
+    "set_wifi_power": REPLACING,
+    "list_vpns": READ_ONLY,
+    "connect_vpn": REPLACING,
+    "disconnect_vpn": REPLACING,
     # notifications
     "send_notification": ADDITIVE,
     "check_notification_permission": READ_ONLY,
@@ -40,6 +61,19 @@ ANNOTATIONS = {
     "allow_sleep": REPLACING,
     "sleep_mac": DESTRUCTIVE,
     "sleep_display": REPLACING,
+    # sound
+    "get_sound_settings": READ_ONLY,
+    "play_sound": ADDITIVE,
+    "play_alert_beep": ADDITIVE,
+    "set_sound_settings": REPLACING,
+    # speech
+    "list_voices": READ_ONLY,
+    "speak": ADDITIVE,
+    "save_speech": REPLACING,
+    # spotlight
+    "search_files": READ_ONLY,
+    "search_files_by_name": READ_ONLY,
+    "get_file_metadata": READ_ONLY,
     # system: what the Mac is
     "get_system_info": READ_ONLY,
     "get_security_status": READ_ONLY,
