@@ -5,13 +5,13 @@ import re
 import socket
 import subprocess
 from pathlib import Path
-from typing import Any, Dict, Optional
 
 import macos
 import pytest
 from mcp import Client
 
 from tests.helpers import text
+from tests.live.helpers import call
 
 pytestmark = pytest.mark.anyio
 
@@ -30,15 +30,6 @@ async def test_get_system_info(client: Client) -> None:
     assert info["memory_bytes"] >= 1024**3
     assert info["computer_name"]
     assert info["uptime_seconds"] > 0
-
-
-async def call(client: Client, tool: str, arguments: Optional[Dict[str, Any]] = None) -> Any:
-    """Call a tool that should work, and return what it says."""
-    result = await client.call_tool(tool, arguments or {})
-    assert not result.is_error, text(result)
-    content = result.structured_content
-    assert content is not None
-    return content["result"] if set(content) == {"result"} else content
 
 
 async def test_get_system_status(client: Client) -> None:

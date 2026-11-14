@@ -95,8 +95,9 @@ The tests are in two folders, with one file per module (`test_system.py` tests
 - `tests/live`: call the tools against the real system, and are skipped outside macOS. What the tools
   do really happens on your Mac: a notification shows up, the clipboard is used (its text is put back)
   and the Mac is kept awake for a moment, a small disk image is made, mounted and unmounted, and a
-  `sleep` process is started and ended. They only use the tools that leave things as they were:
-  nothing is put to sleep, and no setting is changed.
+  `sleep` process is started and ended, a sound is played at no volume, and a preferences domain of
+  the tests' own is written and removed. They only use the tools that leave things as they were:
+  nothing is put to sleep, said out loud or turned off, and no setting is changed.
 
 Both call the tools as a client does, through the protocol, with the `client` fixture of
 `tests/conftest.py`: that tests the schema and the error reporting along with the function. The tests
