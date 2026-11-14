@@ -13,6 +13,12 @@ updates:
       interval: "weekly"
     versioning-strategy: "increase-if-necessary"
     open-pull-requests-limit: 5
+    # The title Dependabot gives a pull request, spelled out: "chore(deps): bump x from 1 to 2". Left to
+    # itself it guesses from the recent commits, and may capitalize "Bump", which the Lint PR title
+    # check refuses.
+    commit-message:
+      prefix: "chore"
+      include: "scope"
 
   # The actions are pinned by commit SHA (with the tag as a comment), so
   # Dependabot is what moves them: it bumps the SHA and the comment together.
@@ -21,3 +27,9 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 5
+    # The title Dependabot gives a pull request, spelled out: "chore(deps): bump x from 1 to 2". Left to
+    # itself it guesses from the recent commits, and may capitalize "Bump", which the Lint PR title
+    # check refuses.
+    commit-message:
+      prefix: "chore"
+      include: "scope"
