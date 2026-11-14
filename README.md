@@ -7,6 +7,7 @@
 
 <p align="center">
   <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-server-blue.svg" alt="MCP server" /></a>
+  <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/test.yml"><img src="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/test.yml/badge.svg" alt="Tests on macOS and Linux" /></a>
   <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/v/mcp-server-macos.svg" alt="Newest PyPI version" /></a>
   <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/pyversions/mcp-server-macos.svg?color=8A2BE2" alt="Supported Python versions" /></a>
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="Platform: macOS" />
