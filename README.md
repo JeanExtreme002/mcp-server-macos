@@ -6,9 +6,11 @@
 </p>
 
 <p align="center">
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-server-blue.svg" alt="MCP server" /></a>
   <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/v/mcp-server-macos.svg" alt="Newest PyPI version" /></a>
   <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/pyversions/mcp-server-macos.svg?color=8A2BE2" alt="Supported Python versions" /></a>
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="Platform: macOS" />
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/status/mcp-server-macos.svg" alt="Development status" /></a>
   <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
 </p>
 
@@ -25,7 +27,11 @@ In Claude Code:
 claude mcp add macos -- uvx mcp-server-macos
 ```
 
-In Claude Desktop, Cursor and other clients configured with JSON:
+In Cursor, one click:
+
+<a href="https://cursor.com/en/install-mcp?name=macos&amp;config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyJtY3Atc2VydmVyLW1hY29zIl19"><img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Add mcp-server-macos to Cursor" height="32" /></a>
+
+In Claude Desktop and other clients configured with JSON:
 
 ```json
 {
