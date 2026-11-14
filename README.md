@@ -1,4 +1,4 @@
-<h1 align="center">mcp-server-macos</h1>
+<h1 align="center">🍎 mcp-server-macos</h1>
 
 <p align="center">
   <b>Let your AI assistant use your Mac.</b><br>
