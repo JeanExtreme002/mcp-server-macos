@@ -1,0 +1,43 @@
+[project]
+name = "mcp-server-macos"
+dynamic = ["version"]
+description = "An MCP server for automating and controlling macOS."
+authors = [
+    { name = "Jean Loui Bernard Silva de Jesus", email = "contact@jeanloui.dev" },
+]
+maintainers = [
+    { name = "Jean Loui Bernard Silva de Jesus", email = "contact@jeanloui.dev" },
+]
+license = "MIT"
+license-files = ["LICENSE*"]
+readme = "README.md"
+keywords = ["mcp", "model-context-protocol", "mcp-server", "macos", "mac", "automation"]
+classifiers = [
+    "Development Status :: 1 - Planning",
+    "Intended Audience :: Developers",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Desktop Environment",
+    "Topic :: System",
+]
+requires-python = ">=3.10"
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/JeanExtreme002/mcp-server-macos"
+Source = "https://github.com/JeanExtreme002/mcp-server-macos"
+Issues = "https://github.com/JeanExtreme002/mcp-server-macos/issues"
+
+[tool.hatch.version]
+path = "mcp_server_macos/__init__.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["mcp_server_macos"]
+
+[tool.hatch.build.targets.sdist]
+exclude = ["/.github"]
+
+# hatchling>=1.27 is required for the PEP 639 ``license``/``license-files`` metadata.
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
