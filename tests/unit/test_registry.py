@@ -10,6 +10,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 
 from mcp_server_macos import _registry, tools
+from mcp_server_macos._permissions import APP, Permission
 from mcp_server_macos._registry import READ_ONLY, add_tool, translate_errors
 from tests.helpers import text
 
@@ -32,11 +33,16 @@ def test_every_tool_module_registers_itself() -> None:
         assert callable(getattr(module, "register", None)), "{} has no register(server)".format(module.__name__)
 
 
+def test_every_tool_module_is_a_toolset_named_after_it() -> None:
+    assert list(tools.TOOLSETS.values()) == list(tools.MODULES)
+    for name, module in tools.TOOLSETS.items():
+        assert module.__name__ == "mcp_server_macos.tools.{}".format(name)
+
+
 @pytest.mark.parametrize(
     "error, expected",
     [
         (macos.NotSupportedError("needs macOS"), "NotSupportedError: needs macOS"),
-        (macos.PermissionDeniedError("notifications are off"), "PermissionDeniedError: notifications are off"),
         (macos.MacOSError("it failed"), "MacOSError: it failed"),
         (ValueError("no such sound"), "ValueError: no such sound"),
     ],
@@ -118,6 +124,7 @@ async def test_expected_error_reaches_the_client_with_its_message() -> None:
 
     assert result.is_error
     assert "PermissionDeniedError: Screen Recording is off" in text(result)
+    assert "Only the user can grant a permission" in text(result)
 
 
 async def test_unexpected_error_reaches_the_client_without_its_message() -> None:
@@ -136,10 +143,159 @@ async def test_unexpected_error_reaches_the_client_without_its_message() -> None
     assert "crash" in text(result)
 
 
-def test_annotations_say_nothing_leaves_this_mac() -> None:
-    for annotations in (_registry.READ_ONLY, _registry.ADDITIVE):
-        assert annotations.open_world_hint is False
+def test_annotations_say_what_a_tool_does() -> None:
+    every = (_registry.READ_ONLY, _registry.ADDITIVE, _registry.REPLACING, _registry.DESTRUCTIVE)
+
+    # Nothing leaves this Mac.
+    assert all(annotations.open_world_hint is False for annotations in every)
 
     assert _registry.READ_ONLY.read_only_hint is True
-    assert _registry.ADDITIVE.read_only_hint is False
+    assert [annotations.read_only_hint for annotations in every[1:]] == [False, False, False]
+
+    # What a client asks the user about: only ADDITIVE changes something without being destructive.
     assert _registry.ADDITIVE.destructive_hint is False
+    assert _registry.REPLACING.destructive_hint is True
+    assert _registry.DESTRUCTIVE.destructive_hint is True
+
+    # Setting a value twice is setting it once. Adding or deleting twice isn't.
+    assert _registry.REPLACING.idempotent_hint is True
+    assert _registry.ADDITIVE.idempotent_hint is False
+    assert _registry.DESTRUCTIVE.idempotent_hint is False
+
+
+# A missing permission: macOS is asked to show its prompt, and the tool runs again if that granted it.
+
+
+class Screen:
+    """A tool that needs a permission, which is granted or not, and the prompt of macOS for it."""
+
+    def __init__(self, granted: bool = False, prompt_grants: bool = False) -> None:
+        self.granted = granted
+        self.prompt_grants = prompt_grants
+        self.calls = 0
+        self.prompts = 0
+        self.permission = Permission(
+            name="Screen Recording", where="System Settings › Privacy", request=self.request, restart=True
+        )
+
+    def request(self) -> bool:
+        self.prompts += 1
+        self.granted = self.granted or self.prompt_grants
+        return self.granted
+
+    def tool(self) -> str:
+        self.calls += 1
+        if not self.granted:
+            raise macos.PermissionDeniedError("Screen Recording permission is missing")
+        return "captured"
+
+
+def test_tool_with_its_permission_runs_once_and_asks_nothing() -> None:
+    screen = Screen(granted=True)
+
+    assert translate_errors(screen.tool, screen.permission)() == "captured"
+    assert (screen.calls, screen.prompts) == (1, 0)
+
+
+def test_missing_permission_is_asked_for_and_the_tool_runs_again() -> None:
+    screen = Screen(prompt_grants=True)
+
+    assert translate_errors(screen.tool, screen.permission)() == "captured"
+    assert (screen.calls, screen.prompts) == (2, 1)
+
+
+def test_permission_still_missing_tells_what_to_ask_the_user() -> None:
+    screen = Screen()
+
+    with pytest.raises(ToolError) as raised:
+        translate_errors(screen.tool, screen.permission)()
+
+    assert str(raised.value) == (
+        "PermissionDeniedError: Screen Recording permission is missing "
+        "This needs the Screen Recording permission, which only the user can grant. "
+        "Ask them to allow {} in System Settings › Privacy, to restart that app, and then try again.".format(APP)
+    )
+    assert isinstance(raised.value.__cause__, macos.PermissionDeniedError)
+    # Asked once, and the tool not run again: macOS said the permission is still missing.
+    assert (screen.calls, screen.prompts) == (1, 1)
+
+
+def test_permission_granted_by_the_prompt_but_refused_again_is_reported() -> None:
+    # macOS says it's granted, and the tool is refused all the same (another permission, or one that
+    # only applies after a restart): reported, not asked for in a loop.
+    screen = Screen()
+    screen.permission = Permission(name="Screen Recording", where="System Settings", request=lambda: True)
+
+    with pytest.raises(ToolError, match="This needs the Screen Recording permission"):
+        translate_errors(screen.tool, screen.permission)()
+
+    assert screen.calls == 2
+
+
+def test_permission_without_a_prompt_is_only_reported() -> None:
+    screen = Screen()
+    permission = Permission(name="Automation", where="System Settings › Automation", note="macOS asks by itself.")
+
+    with pytest.raises(ToolError) as raised:
+        translate_errors(screen.tool, permission)()
+
+    assert str(raised.value).endswith(
+        "Ask them to allow {} in System Settings › Automation, and then try again. macOS asks by itself.".format(APP)
+    )
+    assert screen.calls == 1
+
+
+def test_prompt_that_fails_is_a_permission_still_missing() -> None:
+    def request() -> bool:
+        raise macos.MacOSError("macOS lacks its prompt option")
+
+    screen = Screen()
+    permission = Permission(name="Accessibility", where="System Settings", request=request)
+
+    with pytest.raises(ToolError, match="This needs the Accessibility permission"):
+        translate_errors(screen.tool, permission)()
+
+    assert screen.calls == 1
+
+
+def test_missing_permission_of_a_tool_that_declares_none_is_reported() -> None:
+    screen = Screen()
+
+    with pytest.raises(ToolError) as raised:
+        translate_errors(screen.tool)()
+
+    assert str(raised.value) == (
+        "PermissionDeniedError: Screen Recording permission is missing "
+        "Only the user can grant a permission: ask them to allow {}, and then try again.".format(APP)
+    )
+    assert screen.calls == 1
+
+
+def test_other_errors_do_not_ask_for_a_permission() -> None:
+    screen = Screen()
+
+    def tool() -> None:
+        raise macos.MacOSError("it failed")
+
+    with pytest.raises(ToolError, match="MacOSError: it failed"):
+        translate_errors(tool, screen.permission)()
+
+    assert screen.prompts == 0
+
+
+async def test_tool_registered_with_a_permission_asks_for_it() -> None:
+    screen = Screen(prompt_grants=True)
+
+    def capture() -> str:
+        """Capture the screen."""
+        return screen.tool()
+
+    server = MCPServer(name="test")
+    add_tool(server, capture, title="Capture", annotations=READ_ONLY, permission=screen.permission)
+
+    async with Client(server) as client:
+        result = await client.call_tool("capture", {})
+
+    assert not result.is_error
+    assert text(result) == "captured"
+    assert screen.prompts == 1

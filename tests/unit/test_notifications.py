@@ -75,7 +75,8 @@ async def test_send_notification_refuses_invalid_arguments(
         (ValueError("no alert sound is named 'nope'"), "ValueError: no alert sound is named 'nope'"),
         (
             macos.PermissionDeniedError("notifications are turned off for Script Editor"),
-            "PermissionDeniedError: notifications are turned off for Script Editor",
+            "PermissionDeniedError: notifications are turned off for Script Editor "
+            "This needs the Notifications permission, which only the user can grant.",
         ),
         (macos.NotSupportedError("macos.notifications requires macOS"), "NotSupportedError: macos.notifications"),
         (macos.CommandError(["osascript"], 1, "execution error"), "CommandError: "),
@@ -103,3 +104,27 @@ async def test_send_notification_is_not_read_only(client: Client) -> None:
     assert tool.annotations.destructive_hint is False
     assert tool.input_schema["required"] == ["message"]
     assert set(tool.input_schema["properties"]) == {"message", "title", "subtitle", "sound"}
+
+
+async def test_send_notification_says_where_to_turn_notifications_on(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls = []
+
+    def notify(*args: Any, **kwargs: Any) -> None:
+        calls.append(args)
+        raise macos.PermissionDeniedError("notifications are turned off for Script Editor")
+
+    monkeypatch.setattr(macos, "notify", notify)
+
+    result = await client.call_tool("send_notification", {"message": "hello"})
+
+    assert result.is_error
+    assert (
+        "Ask them to allow Script Editor, which macOS shows the notifications as coming from, "
+        "in System Settings › Notifications › Script Editor, and then try again."
+    ) in text(result)
+    # Not the app that runs the server, as for the other permissions.
+    assert "MCP client" not in text(result)
+    # macOS has no prompt to show for it, so nothing was asked and nothing run twice.
+    assert len(calls) == 1
