@@ -22,17 +22,17 @@ Two tools today, with the rest of pymacos on its way.
 
 With [uv](https://docs.astral.sh/uv/) installed, there's nothing to set up first.
 
-In Claude Code:
+In **Claude Code**:
 
 ```bash
 claude mcp add macos -- uvx mcp-server-macos
 ```
 
-In Cursor, one click:
+In **Cursor**, one click:
 
 <a href="https://cursor.com/en/install-mcp?name=macos&amp;config=eyJjb21tYW5kIjoidXZ4IiwiYXJncyI6WyJtY3Atc2VydmVyLW1hY29zIl19"><img src="https://cursor.com/deeplink/mcp-install-dark.svg" alt="Add mcp-server-macos to Cursor" height="32" /></a>
 
-In Claude Desktop and other clients configured with JSON:
+In **Claude Desktop** and other clients configured with JSON:
 
 ```json
 {
