@@ -31,7 +31,8 @@ mcp_server_macos/
 └── tools/
     ├── __init__.py    MODULES: the list of tool modules
     ├── notifications.py
-    └── system.py
+    ├── system.py
+    └── ...            one module per module of pymacos
 ```
 
 The server holds no logic of its own about macOS: a tool turns its arguments into a call to
@@ -73,8 +74,8 @@ The tests are in two folders, with one file per module (`test_system.py` tests
 `mcp_server_macos.tools.system`):
 
 - `tests/unit`: fake pymacos (with `monkeypatch`), and run anywhere.
-- `tests/live`: call the tools against the real system, and are skipped outside macOS. They show a
-  notification.
+- `tests/live`: call the tools against the real system, and are skipped outside macOS. What the tools
+  do really happens on your Mac: a notification shows up, for example.
 
 Both call the tools as a client does, through the protocol, with the `client` fixture of
 `tests/conftest.py`: that tests the schema and the error reporting along with the function. The tests
