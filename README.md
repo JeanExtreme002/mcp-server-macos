@@ -45,8 +45,7 @@ In **Claude Desktop** and other clients configured with JSON:
 }
 ```
 
-Prefer pip? Run `pip install mcp-server-macos` and use `mcp-server-macos` as the command, with no
-arguments.
+No uv? `pip install mcp-server-macos`, then use `mcp-server-macos` as the command.
 
 Requires macOS and Python 3.10 or newer.
 
