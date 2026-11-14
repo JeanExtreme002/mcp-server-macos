@@ -12,26 +12,8 @@
   <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
 </p>
 
-An assistant can write the script, but it can't tap you on the shoulder when the script is done. It
-can explain how to check which Mac you have, but it can't just look.
-
-mcp-server-macos gives it the Mac it's running on. You add one line to your client, and the
-assistant gets tools that act on your computer, each one saying upfront whether it only reads
-something or does something you'll see.
-
-It's a young project. There are two tools today, and the rest of pymacos (apps, clipboard, windows,
-screenshots, OCR, Keychain and a lot more) is on its way, release by release.
-
-## See it in action
-
-> *"Run the tests and let me know when they're done. I'm getting coffee."*
->
-> The tests run, and a notification shows up on your Mac: **Tests finished: 212 passed.**
-
-> *"Is this Mac good enough to run that model locally?"*
->
-> It looks: a MacBook Pro with an Apple M2 Pro and 16 GB of memory, on macOS 15.6. Then it answers
-> for your machine, not for Macs in general.
+Add one line to your client, and your assistant gets tools that act on the Mac it's running on.
+Two tools today, with the rest of pymacos on its way.
 
 ## Get started
 
@@ -60,6 +42,17 @@ Prefer pip? Run `pip install mcp-server-macos` and use `mcp-server-macos` as the
 arguments.
 
 Requires macOS and Python 3.10 or newer.
+
+## See it in action
+
+> *"Run the tests and let me know when they're done. I'm getting coffee."*
+>
+> The tests run, and a notification shows up on your Mac: **Tests finished: 212 passed.**
+
+> *"Is this Mac good enough to run that model locally?"*
+>
+> It looks: a MacBook Pro with an Apple M2 Pro and 16 GB of memory, on macOS 15.6. Then it answers
+> for your machine, not for Macs in general.
 
 ## Tools
 
