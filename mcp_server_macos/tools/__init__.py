@@ -14,12 +14,16 @@ from typing import Dict, Iterable, Optional, Tuple
 
 from mcp.server.mcpserver import MCPServer
 
-from . import notifications, system
+from . import appearance, clipboard, notifications, power, system, volume
 
 #: Every tool module, in the order the tools are listed to a client.
 MODULES: Tuple[ModuleType, ...] = (
+    appearance,
+    clipboard,
     notifications,
+    power,
     system,
+    volume,
 )
 
 #: The modules by the name of their toolset: ``"system"`` for ``tools/system.py``.

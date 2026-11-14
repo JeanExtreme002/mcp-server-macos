@@ -31,6 +31,7 @@ help:
 	@echo "  $(YELLOW)test-coverage$(NC)    - Run the unit tests with a coverage report, failing under the $(COVERAGE_MIN)% CI gates on"
 	@echo "  $(YELLOW)lint$(NC)             - Run the linter (flake8)"
 	@echo "  $(YELLOW)type-check$(NC)       - Run the type checker (mypy)"
+	@echo "  $(YELLOW)api-coverage$(NC)     - Show how much of pymacos the server covers, module by module"
 	@echo "  $(YELLOW)check$(NC)            - Run lint, type-check and test-unit: what CI runs on a pull request, except the live tests"
 	@echo ""
 	@echo "Running:"
@@ -62,7 +63,7 @@ install-dev:
 	$(PIP) install -e ".[dev]"
 
 # The unit tests and the live ones, which call the tools against this Mac: what they do really
-# happens (a notification shows up, for example).
+# happens (a notification shows up, the clipboard is used and its text put back).
 .PHONY: test
 test:
 	@echo "$(GREEN)Running the unit and live tests...$(NC)"
@@ -100,6 +101,11 @@ lint:
 type-check:
 	@echo "$(GREEN)Running type checker (mypy)...$(NC)"
 	$(PYTHON) -m mypy $(PACKAGE_NAME) $(TEST_DIR)
+
+# How many of the functions of each module of pymacos a tool uses (see CONTRIBUTING.md).
+.PHONY: api-coverage
+api-coverage:
+	@$(PYTHON) -m tests.pymacos_api
 
 # Everything CI runs on a pull request, except the live tests
 .PHONY: check

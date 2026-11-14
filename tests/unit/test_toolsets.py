@@ -26,6 +26,7 @@ async def test_every_toolset_by_default() -> None:
 async def test_only_the_toolsets_asked_for() -> None:
     assert await listed(create_server(["system"])) == {"get_system_info"}
     assert await listed(create_server(["notifications"])) == {"send_notification"}
+    assert await listed(create_server(["volume", "system"])) == {"get_volume", "set_volume", "set_muted", "get_system_info"}
 
 
 async def test_each_toolset_has_tools_and_together_they_have_them_all() -> None:
