@@ -44,8 +44,9 @@ def translate_errors(function: _Function, permission: Optional[Permission] = Non
     without one (the text of an unexpected exception may hold what shouldn't leave this machine). So the
     errors pymacos raises on purpose become a :class:`ToolError`: when macOS fails or refuses
     (:class:`macos.MacOSError`: a missing permission, a feature this system lacks...) and when an argument
-    is invalid (:class:`ValueError`). The message starts with the exception's name, which says what kind
-    of failure it was.
+    is invalid (:class:`ValueError`) or a file is missing or can't be opened (:class:`OSError`:
+    :class:`FileNotFoundError`, :class:`PermissionError`...). The message starts with the exception's name,
+    which says what kind of failure it was.
 
     A missing permission (:class:`macos.PermissionDeniedError`) gets more than a message. With
     ``permission``, the one the tool needs, macOS is asked to show its prompt, and the tool runs again if
@@ -65,7 +66,7 @@ def translate_errors(function: _Function, permission: Optional[Permission] = Non
                 return function(*args, **kwargs)
         except macos.PermissionDeniedError as error:
             raise ToolError(_permissions.missing(error, permission)) from error
-        except (macos.MacOSError, ValueError) as error:
+        except (macos.MacOSError, ValueError, OSError) as error:
             raise ToolError("{}: {}".format(type(error).__name__, error)) from error
 
     return wrapper  # type: ignore[return-value]

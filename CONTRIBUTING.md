@@ -67,8 +67,10 @@ happens on the Mac is fixed in pymacos, and so is a missing feature.
      [which feature needs which](https://macos.readthedocs.io/en/latest/permissions.html). When the
      permission is missing, the server asks macOS to show its prompt and runs the tool again if that
      granted it; otherwise the model is told what the user has to allow, and where.
-4. Test it (below), and add its name to `TOOLS` in `tests/unit/test_server.py`. The README doesn't list
-   the tools: a client shows them, with their descriptions.
+4. Test it (below), and add it to `ANNOTATIONS` in `tests/unit/test_server.py`, with what it does to the
+   Mac. The README doesn't list the tools: a client shows them, with their descriptions.
+5. If no tool uses one of the functions of the pymacos module, say why in `EXCLUDED`, in
+   `tests/pymacos_api.py` (see *Covering pymacos* below).
 
 ## Toolsets
 
@@ -91,11 +93,24 @@ The tests are in two folders, with one file per module (`test_system.py` tests
 
 - `tests/unit`: fake pymacos (with `monkeypatch`), and run anywhere.
 - `tests/live`: call the tools against the real system, and are skipped outside macOS. What the tools
-  do really happens on your Mac: a notification shows up, for example.
+  do really happens on your Mac: a notification shows up, the clipboard is used (its text is put back)
+  and the Mac is kept awake for a moment. They only use the tools that leave things as they were:
+  nothing is put to sleep, and no setting is changed.
 
 Both call the tools as a client does, through the protocol, with the `client` fixture of
 `tests/conftest.py`: that tests the schema and the error reporting along with the function. The tests
 are async, run by the pytest plugin of anyio (`pytestmark = pytest.mark.anyio`).
+
+## Covering pymacos
+
+The server means to offer what pymacos does, module by module. `make api-coverage` (or
+`python -m tests.pymacos_api`) prints, for each module of pymacos, how many of its functions the
+server uses.
+
+A module that has a toolset is held to it by a test: each of its public functions is used by a tool,
+or is in `EXCLUDED` (in `tests/pymacos_api.py`) with the reason none does, such as a function that
+never returns. So when pymacos gains a function in a module the server covers, the test fails until a
+tool uses it. The modules still being worked on are in `IN_PROGRESS`, in the same file.
 
 ## Lint and type check
 

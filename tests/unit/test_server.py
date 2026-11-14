@@ -8,14 +8,46 @@ from mcp.server.mcpserver import MCPServer
 
 import mcp_server_macos
 from mcp_server_macos import create_server
+from mcp_server_macos._registry import ADDITIVE, DESTRUCTIVE, READ_ONLY, REPLACING
 from tests.helpers import text
 
 pytestmark = pytest.mark.anyio
 
-# Every tool, by name. A new tool is added here, and only here (test_stdio.py uses this list too): a
-# client finds tools by name, so renaming or dropping one breaks whoever relies on it, and shouldn't
-# happen unnoticed.
-TOOLS = {"get_system_info", "send_notification"}
+# Every tool, by name, with what it does to the Mac. A new tool is added here, and only here (the other
+# tests use this list): a client finds tools by name, so renaming or dropping one breaks whoever relies
+# on it, and decides by these annotations whether to ask the user before a call, so a tool that changes
+# or deletes something must never pass for one that only reads. Neither should change unnoticed.
+ANNOTATIONS = {
+    # appearance
+    "get_appearance": READ_ONLY,
+    "set_appearance": REPLACING,
+    "wait_for_appearance_change": READ_ONLY,
+    # clipboard
+    "get_clipboard": READ_ONLY,
+    "get_clipboard_image": READ_ONLY,
+    "set_clipboard": REPLACING,
+    "copy_files_to_clipboard": REPLACING,
+    "copy_image_to_clipboard": REPLACING,
+    "clear_clipboard": REPLACING,
+    "wait_for_clipboard_change": READ_ONLY,
+    # notifications
+    "send_notification": ADDITIVE,
+    # power
+    "get_power_status": READ_ONLY,
+    "get_sleep_blockers": READ_ONLY,
+    "keep_awake": REPLACING,
+    "allow_sleep": REPLACING,
+    "sleep_mac": DESTRUCTIVE,
+    "sleep_display": REPLACING,
+    # system
+    "get_system_info": READ_ONLY,
+    # volume
+    "get_volume": READ_ONLY,
+    "set_volume": REPLACING,
+    "set_muted": REPLACING,
+}
+
+TOOLS = set(ANNOTATIONS)
 
 
 async def test_server_introduces_itself(client: Client) -> None:
@@ -33,6 +65,11 @@ async def test_tools_are_the_expected_ones(client: Client) -> None:
 
     assert {tool.name for tool in listed.tools} == TOOLS
     assert len(listed.tools) == len(TOOLS), "a tool is listed twice"
+
+
+async def test_tools_do_what_they_are_listed_to_do(client: Client) -> None:
+    for tool in (await client.list_tools()).tools:
+        assert tool.annotations == ANNOTATIONS[tool.name], tool.name
 
 
 async def test_every_tool_is_described(client: Client) -> None:
