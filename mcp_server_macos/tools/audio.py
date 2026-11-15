@@ -8,7 +8,7 @@ from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
 from .._permissions import MICROPHONE
-from .._registry import DESTRUCTIVE, LONGEST_WAIT, READ_ONLY, REPLACING, add_tool
+from .._registry import DESTRUCTIVE, LONGEST_WAIT, OPEN_ENDED, READ_ONLY, REPLACING, add_tool
 
 DeviceName = Annotated[
     str,
@@ -155,7 +155,10 @@ def get_audio_status() -> AudioStatus:
 
 
 def set_audio_output(device: DeviceName) -> Device:
-    """Play the Mac's sound through a device: speakers, headphones, a display..."""
+    """
+    Play the Mac's sound through a device: speakers, headphones, a display... An AirPlay device plays
+    it elsewhere, over the network: whatever the Mac plays is heard where that device is.
+    """
     return _device(macos.audio.set_output(device))
 
 
@@ -347,7 +350,8 @@ def change_audio_speed(
 
 def register(server: MCPServer) -> None:
     add_tool(server, get_audio_status, title="Get the audio devices", annotations=READ_ONLY)
-    add_tool(server, set_audio_output, title="Set the sound output", annotations=REPLACING)
+    # An output may be an AirPlay receiver: the Mac's sound then goes over the network, to another room.
+    add_tool(server, set_audio_output, title="Set the sound output", annotations=OPEN_ENDED)
     add_tool(server, set_audio_input, title="Set the microphone", annotations=REPLACING)
     add_tool(server, set_microphone, title="Set the microphone's volume or mute", annotations=REPLACING)
     add_tool(

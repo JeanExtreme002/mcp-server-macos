@@ -42,7 +42,7 @@ ANNOTATIONS = {
     "remove_quarantine": DESTRUCTIVE,
     # audio
     "get_audio_status": READ_ONLY,
-    "set_audio_output": REPLACING,
+    "set_audio_output": OPEN_ENDED,
     "set_audio_input": REPLACING,
     "set_microphone": REPLACING,
     "get_microphone_level": READ_ONLY,
@@ -149,8 +149,8 @@ ANNOTATIONS = {
     "run_speed_test": READ_ONLY_ONLINE,
     "set_wifi_power": REPLACING,
     "list_vpns": READ_ONLY,
-    "connect_vpn": REPLACING,
-    "disconnect_vpn": REPLACING,
+    "connect_vpn": OPEN_ENDED,
+    "disconnect_vpn": OPEN_ENDED,
     # notifications
     "send_notification": ADDITIVE,
     "check_notification_permission": READ_ONLY,
