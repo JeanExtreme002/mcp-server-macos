@@ -58,6 +58,12 @@ class FakeWindow:
         return method
 
 
+@pytest.fixture(autouse=True)
+def instant(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fake windows take a few reads to change, as macOS's do: read without pausing in between."""
+    monkeypatch.setattr(windows, "_pause", lambda seconds: None)
+
+
 @pytest.fixture
 def mac(monkeypatch: pytest.MonkeyPatch) -> Recorder:
     recorder = Recorder()
@@ -190,7 +196,6 @@ async def test_the_state_told_is_the_one_the_window_is_in(
     client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch, minimized: bool
 ) -> None:
     # macOS says a window is minimized, or back, only once its animation is over: the tool waits for it.
-    monkeypatch.setattr(windows, "_pause", lambda seconds: None)
     mac.windows[1].minimized = not minimized  # type: ignore[attr-defined]
 
     result = await client.call_tool("set_window_state", {"minimized": minimized})
@@ -202,14 +207,13 @@ async def test_the_state_told_is_the_one_the_window_is_in(
 async def test_a_window_that_doesnt_minimize(client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch) -> None:
     clock = iter(range(0, 100))
     monkeypatch.setattr(windows, "_clock", lambda: next(clock))
-    monkeypatch.setattr(windows, "_pause", lambda seconds: None)
     stuck = mac.windows[1]  # type: ignore[attr-defined]
     monkeypatch.setattr(stuck, "minimize", lambda: None)  # asked, and nothing happens
 
     result = await client.call_tool("set_window_state", {"minimized": True})
 
     assert result.is_error
-    assert "didn't minimize: its app may not allow it" in text(result)
+    assert "WaitTimeoutError: could not minimize the window of TextEdit within 3 seconds" in text(result)
 
 
 async def test_close_window(client: Client, mac: Recorder) -> None:
@@ -328,6 +332,8 @@ async def test_without_the_permission_it_is_asked_for(client: Client, monkeypatc
         ("snap_window", {"layout": "center", "display": 2}),
         ("snap_window", {"layout": "middle"}),
         ("set_window_state", {}),
+        # A window in full screen can't be minimized: refused before anything is done.
+        ("set_window_state", {"minimized": True, "fullscreen": True}),
         ("tile_windows", {"app": "TextEdit", "windows": [{"app": "TextEdit"}]}),
         ("tile_windows", {"windows": []}),
         ("tile_windows", {"columns": 0}),

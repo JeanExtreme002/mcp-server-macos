@@ -224,6 +224,8 @@ def set_window_state(
     """Minimize a window or bring it back, or make it full screen or not, as its yellow and green buttons do."""
     if minimized is None and fullscreen is None:
         raise ValueError("say what to change: minimized, fullscreen or both")
+    if minimized and fullscreen:
+        raise ValueError("a window in full screen can't be minimized: ask for one or the other")
     window = _window(app, title)
     if minimized is False:
         window.restore()
@@ -244,9 +246,10 @@ def _settle(window: Any, *, minimized: bool) -> None:
     deadline = _clock() + _SETTLING
     while window.minimized != minimized:
         if _clock() > deadline:
-            raise macos.MacOSError(
-                "the window of {} didn't {}: its app may not allow it".format(
-                    window.app, "minimize" if minimized else "come back"
+            # As pymacos's set_fullscreen says it: too slow, its app refusing, or a window closed meanwhile.
+            raise macos.WaitTimeoutError(
+                "could not {} the window of {} within {:g} seconds".format(
+                    "minimize" if minimized else "restore", window.app, _SETTLING
                 )
             )
         _pause(0.05)
