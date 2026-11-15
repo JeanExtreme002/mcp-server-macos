@@ -3,7 +3,7 @@
 import re
 from datetime import datetime
 from pathlib import Path
-from typing import Annotated, Any, Dict, List, Literal, Optional, Sequence, Tuple, Union
+from typing import Annotated, Any, Callable, Dict, List, Literal, Optional, Sequence, Tuple, Union
 
 import macos
 from mcp.server.mcpserver import Image, MCPServer
@@ -173,7 +173,9 @@ def _some(
 
 def _expanded(target: Union[str, "re.Pattern[str]"], found: str, new: str) -> str:
     """``new`` with the groups of ``target`` filled in from ``found``, the text one of its matches has."""
-    if isinstance(target, str):
+    if isinstance(target, str) or "\\" not in new:
+        # Nothing to fill in: a replacement without a backslash has no group to refer to, and the text
+        # found isn't matched again, which a pattern that looks around it (a lookbehind) may not do.
         return new
     # The match is found ignoring spacing and line breaks, which its text may have otherwise.
     matched = target.fullmatch(found) or target.fullmatch(" ".join(found.split())) or target.search(found)
@@ -183,7 +185,16 @@ def _expanded(target: Union[str, "re.Pattern[str]"], found: str, new: str) -> st
                 target.pattern, found
             )
         )
-    return matched.expand(new)
+    expanded: str = _template(lambda: matched.expand(new), new)
+    return expanded
+
+
+def _template(fill: Callable[[], Any], new: str) -> Any:
+    """What ``fill`` gives, where a replacement that refers to a group the pattern hasn't is a ValueError."""
+    try:
+        return fill()
+    except re.error as error:
+        raise ValueError("{!r} isn't a valid replacement for the pattern: {}".format(new, error)) from None
 
 
 def get_pdf_info(path: PdfPath, password: Password = None) -> PdfInfo:
@@ -285,7 +296,10 @@ def rotate_pdf_pages(
 
 def encrypt_pdf(
     path: PdfPath,
-    output: Output,
+    output: Annotated[
+        str,
+        Field(description="Where to save the encrypted PDF. A file already there is replaced.", min_length=1),
+    ],
     password: Annotated[
         str,
         Field(description="The password that will open it: letters without accents, digits and punctuation only.", min_length=1),
@@ -581,8 +595,12 @@ def replace_in_pdf(
         )
         return _changes(done)
     compiled: Dict[Any, str] = dict(zip(_targets(list(replacements), regex), replacements.values()))
-    done = macos.pdf.replace(
-        path, output, compiled, color=color, background=background, font=font, size=size, pages=pages, password=password
+    # pymacos fills the groups in itself here: a reference to a group the pattern hasn't fails there.
+    done = _template(
+        lambda: macos.pdf.replace(
+            path, output, compiled, color=color, background=background, font=font, size=size, pages=pages, password=password
+        ),
+        ", ".join(replacements.values()),
     )
     return _changes(done)
 

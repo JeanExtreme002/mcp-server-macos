@@ -495,3 +495,48 @@ async def test_pdf_descriptions_say_what_is_lost(client: Client) -> None:
     # The text layer of the pages erasing or replacing redraws.
     for tool in ("erase_from_pdf", "replace_in_pdf"):
         assert "the rest of its text can't be selected" in " ".join((described[tool].description or "").split())
+
+
+async def test_literal_replacement_of_some_places_of_a_pattern_is_not_matched_again(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A pattern that looks around what it finds ("123" after "ID ") can't match the found text alone:
+    # a replacement with no group to fill in is written as it is, without trying.
+    hits = [match(1, "123", 10.0)]
+    recorder = Recorder()
+    monkeypatch.setattr(macos.pdf, "find", recorder.function("find", hits))
+    monkeypatch.setattr(macos.pdf, "replace", recorder.function("replace", done(macos.pdf.Edit)))
+
+    result = await client.call_tool(
+        "replace_in_pdf",
+        {"path": "l.pdf", "output": "r.pdf", "replacements": {r"(?<=ID )\d+": "456"}, "regex": True, "occurrences": [1]},
+    )
+
+    assert not result.is_error, text(result)
+    assert recorder.calls[1][1][2] == {hits[0]: "456"}
+
+
+@pytest.mark.parametrize("occurrences", [None, [1]])
+async def test_replacement_that_refers_to_a_group_the_pattern_has_not_is_explained(
+    client: Client, monkeypatch: pytest.MonkeyPatch, occurrences: Any
+) -> None:
+    def replace(*args: Any, **options: Any) -> Any:
+        # As pymacos does with a mapping of patterns: it fills the groups in, through re.
+        re.compile(r"Ana (\w+)").sub(r"Maria \2", "Ana Souza")
+
+    monkeypatch.setattr(macos.pdf, "find", lambda *a, **k: [match(1, "Ana Souza", 10.0)])
+    monkeypatch.setattr(macos.pdf, "replace", replace)
+    arguments = {"path": "l.pdf", "output": "r.pdf", "replacements": {r"Ana (\w+)": r"Maria \2"}, "regex": True}
+    if occurrences:
+        arguments["occurrences"] = occurrences
+
+    result = await client.call_tool("replace_in_pdf", arguments)
+
+    assert result.is_error
+    assert "isn't a valid replacement for the pattern" in text(result)
+
+
+async def test_encrypt_pdf_does_not_say_its_result_is_not_encrypted(client: Client) -> None:
+    (tool,) = [tool for tool in (await client.list_tools()).tools if tool.name == "encrypt_pdf"]
+
+    assert "isn't encrypted" not in tool.input_schema["properties"]["output"]["description"]
