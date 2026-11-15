@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from typing import Callable, Optional
 
 import macos
+from mcp.server.mcpserver.exceptions import ToolError
 
 #: Who the user has to allow, unless the permission says otherwise, in words a model can pass on.
 APP = "the app that runs this server (the MCP client, or the terminal it was started from)"
@@ -174,3 +175,15 @@ def ask(permission: Optional[Permission]) -> bool:
         return bool(permission.request())
     except macos.MacOSError:
         return False
+
+
+def require(permission: Permission, granted: Callable[[], bool]) -> None:
+    """
+    Make sure of ``permission``, which a tool needs only for some of its arguments (the microphone, for
+    a recording with sound), before it acts. ``granted`` says whether it's there; when it isn't, macOS is
+    asked to show its prompt, and when it stays missing, :class:`ToolError` says what to allow and where.
+    """
+    if granted() or ask(permission):
+        return
+    error = macos.PermissionDeniedError("{} permission is missing".format(permission.name))
+    raise ToolError(missing(error, permission))

@@ -1,10 +1,11 @@
 """The permissions tools can declare: what each asks of pymacos, and of the user."""
 
 import dataclasses
-from typing import List
+from typing import List, Optional
 
 import macos
 import pytest
+from mcp.server.mcpserver.exceptions import ToolError
 
 from mcp_server_macos import _permissions
 from mcp_server_macos._permissions import APP, Permission
@@ -99,3 +100,24 @@ def test_no_permission_has_nothing_to_ask() -> None:
 def test_permissions_cannot_be_changed() -> None:
     with pytest.raises(dataclasses.FrozenInstanceError):
         _permissions.CAMERA.name = "Microphone"  # type: ignore[misc]
+
+
+@pytest.mark.parametrize("granted, prompted, raised", [(True, None, False), (False, True, False), (False, False, True)])
+def test_a_permission_needed_for_some_arguments(
+    monkeypatch: pytest.MonkeyPatch, granted: bool, prompted: Optional[bool], raised: bool
+) -> None:
+    asked: List[str] = []
+
+    def request() -> bool:
+        asked.append("asked")
+        return bool(prompted)
+
+    monkeypatch.setattr(macos.audio, "request_permission", request)
+
+    if raised:
+        with pytest.raises(ToolError, match="System Settings › Privacy & Security › Microphone"):
+            _permissions.require(_permissions.MICROPHONE, lambda: granted)
+    else:
+        _permissions.require(_permissions.MICROPHONE, lambda: granted)
+    # Asked only when it isn't there.
+    assert asked == ([] if granted else ["asked"])
