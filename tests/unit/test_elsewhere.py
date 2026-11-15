@@ -9,7 +9,14 @@ import pytest
 
 from mcp_server_macos import _elsewhere
 
-HERE = "tests.unit.test_elsewhere"
+# The process imports from the server's path, never the working directory: these helpers are found by
+# their own folder, put on the path, as the repository may be the working directory (the wheel's tests).
+HERE = "test_elsewhere"
+
+
+@pytest.fixture(autouse=True)
+def helpers_on_the_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.syspath_prepend(str(Path(__file__).resolve().parent))
 
 
 def refuse(kind: str) -> Any:
