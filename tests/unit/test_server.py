@@ -48,6 +48,15 @@ ANNOTATIONS = {
     "set_bluetooth_power": REPLACING,
     "connect_bluetooth_device": REPLACING,
     "disconnect_bluetooth_device": REPLACING,
+    # browser
+    "list_browser_tabs": READ_ONLY,
+    "get_current_tab": READ_ONLY,
+    "open_in_browser": OPEN_ENDED,
+    "switch_to_browser_tab": REPLACING,
+    "reload_browser_tab": REPLACING,
+    "navigate_browser_tab": OPEN_ENDED,
+    "close_browser_tab": DESTRUCTIVE,
+    "run_javascript_in_browser": OPEN_ENDED,
     # clipboard
     "get_clipboard": READ_ONLY,
     "get_clipboard_image": READ_ONLY,
@@ -68,6 +77,9 @@ ANNOTATIONS = {
     "ask_choice": ADDITIVE,
     "ask_for_files": ADDITIVE,
     "ask_for_folder": ADDITIVE,
+    # document
+    "read_document_text": READ_ONLY,
+    "convert_document": REPLACING,
     # keychain
     "list_keychain_accounts": READ_ONLY,
     "get_keychain_password": READ_ONLY,
@@ -87,6 +99,11 @@ ANNOTATIONS = {
     "reverse_geocode": READ_ONLY_ONLINE,
     "show_in_maps": ADDITIVE,
     "show_directions_in_maps": ADDITIVE,
+    # music
+    "get_now_playing": READ_ONLY,
+    "control_music": REPLACING,
+    "set_music_volume": REPLACING,
+    "seek_music": REPLACING,
     # network
     "get_network_status": READ_ONLY,
     "list_network_interfaces": READ_ONLY,
@@ -106,6 +123,24 @@ ANNOTATIONS = {
     "allow_sleep": REPLACING,
     "sleep_mac": DESTRUCTIVE,
     "sleep_display": REPLACING,
+    # printer
+    "list_printers": READ_ONLY,
+    "set_default_printer": REPLACING,
+    "print_file": ADDITIVE,
+    "list_print_jobs": READ_ONLY,
+    "cancel_print_job": DESTRUCTIVE,
+    # schedule
+    "list_scheduled_jobs": READ_ONLY,
+    "get_scheduled_job": READ_ONLY,
+    "schedule_script": OPEN_ENDED,
+    "run_scheduled_job_now": OPEN_ENDED,
+    "resume_scheduled_job": OPEN_ENDED,
+    "pause_scheduled_job": REPLACING,
+    "remove_scheduled_job": DESTRUCTIVE,
+    # settings
+    "list_setting_names": READ_ONLY,
+    "export_settings": READ_ONLY,
+    "apply_settings": REPLACING,
     # shortcuts
     "list_shortcuts": READ_ONLY,
     "run_shortcut": OPEN_ENDED,
@@ -158,6 +193,12 @@ ANNOTATIONS = {
     "list_crash_reports": READ_ONLY,
     "read_system_log": READ_ONLY,
     "list_startup_items": READ_ONLY,
+    # time_machine
+    "get_backup_status": READ_ONLY,
+    "start_backup": ADDITIVE,
+    "stop_backup": REPLACING,
+    "check_backup_exclusion": READ_ONLY,
+    "set_backup_exclusion": REPLACING,
     # volume
     "get_volume": READ_ONLY,
     "set_volume": REPLACING,

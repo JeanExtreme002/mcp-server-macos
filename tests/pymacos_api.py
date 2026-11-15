@@ -24,6 +24,7 @@ from mcp_server_macos import tools
 
 #: The functions of pymacos that no tool uses, on purpose, and why.
 EXCLUDED: Dict[str, str] = {
+    "settings.batch": "a with block around other calls: apply_settings already restarts the Dock and Finder once",
     "auth.required": "a decorator for Python functions: authenticate_user asks the same question",
     "defaults.restored": "a with block around other calls: read_preference before and write_preference after do the same",
     "appearance.is_dark": "the same as mode() being 'dark', which get_appearance returns",
