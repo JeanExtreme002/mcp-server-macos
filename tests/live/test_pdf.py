@@ -81,6 +81,10 @@ async def test_pdf_is_encrypted_and_opened_with_its_password(client: Client, con
 
     assert (await call(client, "get_pdf_info", {"path": locked, "password": "1234"}))["pages"] == 1
 
+    decrypted = {"path": locked, "output": str(tmp_path / "o.pdf"), "password": "1234"}
+    opened = (await call(client, "decrypt_pdf", decrypted))["path"]
+    assert "Jane Doe" in (await call(client, "read_pdf_text", {"path": opened}))["text"]
+
 
 async def test_pdf_is_marked_signed_and_given_contents(client: Client, contract: str, tmp_path: Path) -> None:
     signature = tmp_path / "signature.png"

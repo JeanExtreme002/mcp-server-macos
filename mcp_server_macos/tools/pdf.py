@@ -282,6 +282,24 @@ def encrypt_pdf(
     )
 
 
+def decrypt_pdf(
+    path: PdfPath,
+    output: Output,
+    password: Annotated[
+        Optional[str],
+        Field(
+            description="The password that opens the PDF, or its owner's. Not needed for one that opens without a "
+            "password and only restricts printing, copying or editing."
+        ),
+    ] = None,
+) -> Saved:
+    """
+    Save a copy of an encrypted PDF that asks for no password, and has no restrictions on printing,
+    copying or editing. The pages, metadata and bookmarks are kept.
+    """
+    return _saved(macos.pdf.decrypt(path, output, password))
+
+
 def ocr_pdf(
     path: PdfPath,
     output: Output,
@@ -554,6 +572,7 @@ def register(server: MCPServer) -> None:
         (extract_pdf_pages, "Extract pages of a PDF"),
         (rotate_pdf_pages, "Rotate pages of a PDF"),
         (encrypt_pdf, "Encrypt a PDF"),
+        (decrypt_pdf, "Decrypt a PDF"),
         (ocr_pdf, "Make a scanned PDF searchable"),
         (watermark_pdf, "Watermark a PDF"),
         (compress_pdf, "Compress a PDF"),

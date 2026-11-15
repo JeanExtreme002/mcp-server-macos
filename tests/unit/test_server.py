@@ -148,6 +148,7 @@ ANNOTATIONS = {
     "extract_pdf_pages": REPLACING,
     "rotate_pdf_pages": REPLACING,
     "encrypt_pdf": REPLACING,
+    "decrypt_pdf": REPLACING,
     "ocr_pdf": REPLACING,
     "watermark_pdf": REPLACING,
     "compress_pdf": REPLACING,

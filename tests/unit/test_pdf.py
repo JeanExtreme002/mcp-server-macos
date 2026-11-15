@@ -174,6 +174,7 @@ WRITERS: Dict[str, Tuple[Dict[str, Any], str, Tuple[Any, ...], Dict[str, Any]]] 
         ("a.pdf", "b.pdf", "1234"),
         {"current_password": None, "owner_password": None},
     ),
+    "decrypt_pdf": ({"path": "l.pdf", "output": "o.pdf", "password": "1234"}, "decrypt", ("l.pdf", "o.pdf", "1234"), {}),
     "ocr_pdf": (
         {"path": "scan.pdf", "output": "b.pdf", "languages": ["pt-BR"]},
         "ocr",
