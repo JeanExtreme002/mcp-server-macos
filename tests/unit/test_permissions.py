@@ -13,6 +13,7 @@ EVERY: List[Permission] = [value for value in vars(_permissions).values() if isi
 
 # The function of pymacos each permission's prompt is, by its path from the macos package.
 PROMPTS = {
+    "Screen Recording and Accessibility": "screen.request_permission keyboard.request_permission",
     "Screen Recording": "screen.request_permission",
     "Accessibility": "keyboard.request_permission",
     "Input Monitoring": "keyboard.request_listen_permission",
@@ -47,12 +48,35 @@ def test_permission_asks_pymacos_for_its_prompt(permission: Permission, monkeypa
         assert _permissions.ask(permission) is False
         return
 
-    module, function = PROMPTS[permission.name].split(".")
-    assert callable(getattr(getattr(macos, module), function)), "pymacos has no macos.{}".format(PROMPTS[permission.name])
+    # Some permissions are two, asked for one after the other: granted when both are.
+    prompts = [path.split(".") for path in PROMPTS[permission.name].split()]
+    for module, function in prompts:
+        assert callable(getattr(getattr(macos, module), function)), "pymacos has no macos.{}.{}".format(
+            module, function
+        )
 
     for answer in (True, False):
-        monkeypatch.setattr(getattr(macos, module), function, lambda answer=answer: answer)
+        for module, function in prompts:
+            monkeypatch.setattr(getattr(macos, module), function, lambda answer=answer: answer)
         assert _permissions.ask(permission) is answer
+
+
+def test_both_prompts_show_even_when_the_first_is_refused(monkeypatch: pytest.MonkeyPatch) -> None:
+    asked: List[str] = []
+
+    def screen() -> bool:
+        asked.append("screen")
+        return False
+
+    def accessibility() -> bool:
+        asked.append("accessibility")
+        return True
+
+    monkeypatch.setattr(macos.screen, "request_permission", screen)
+    monkeypatch.setattr(macos.keyboard, "request_permission", accessibility)
+
+    assert _permissions.ask(_permissions.SCREEN_RECORDING_AND_ACCESSIBILITY) is False
+    assert asked == ["screen", "accessibility"]
 
 
 def test_permissions_are_granted_to_the_app_that_runs_the_server_except_notifications() -> None:

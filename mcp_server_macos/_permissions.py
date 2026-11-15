@@ -68,6 +68,21 @@ ACCESSIBILITY = Permission(
     restart=True,
 )
 
+
+def _both() -> bool:
+    # Asked for one after the other, so the user sees both prompts: granted when both are.
+    screen = macos.screen.request_permission()
+    return macos.keyboard.request_permission() and screen
+
+
+#: Finding something on the screen to click it: seeing the screen, and sending the click.
+SCREEN_RECORDING_AND_ACCESSIBILITY = Permission(
+    name="Screen Recording and Accessibility",
+    where="System Settings › Privacy & Security › Screen & System Audio Recording, and › Accessibility",
+    request=_both,
+    restart=True,
+)
+
 #: Listening to the keyboard and the mouse.
 INPUT_MONITORING = Permission(
     name="Input Monitoring",
