@@ -1,5 +1,6 @@
 """Tools for the Dock: its settings, the apps and folders kept in it, and the hot corners, from ``macos.dock``."""
 
+import threading
 from typing import Annotated, Any, Callable, Dict, List, Literal, Optional, Tuple, Union
 
 import macos
@@ -33,6 +34,11 @@ Action = Literal[
     "quick_note",
 ]
 Seconds = Annotated[float, Field(ge=0, le=10)]
+
+# pymacos reads the Dock's whole list of items and writes it back for each change, and the tools run on
+# worker threads: two changes at once would each write the list without the other's. They take turns,
+# across every server of the process, as the Dock is one.
+_ITEMS = threading.Lock()
 
 
 class DockApp(BaseModel):
@@ -273,13 +279,16 @@ def add_app_to_dock(app: AppName, index: Index = None) -> DockApp:
     Keep an app in the Dock. One kept already isn't added twice, and what the Dock kept at the app's path
     as something else (a folder tile) is taken out. The Dock restarts.
     """
-    added = macos.dock.add_app(app, index=index)
+    with _ITEMS:
+        added = macos.dock.add_app(app, index=index)
     return DockApp(name=added.name, path=None if added.path is None else str(added.path), bundle_id=added.bundle_id)
 
 
 def remove_app_from_dock(app: AppName) -> str:
     """Take an app out of the Dock. It stays installed. The Dock restarts."""
-    if macos.dock.remove_app(app):
+    with _ITEMS:
+        removed = macos.dock.remove_app(app)
+    if removed:
         return "{} is out of the Dock.".format(app)
     return "{} wasn't in the Dock.".format(app)
 
@@ -299,7 +308,8 @@ def add_folder_to_dock(
     ] = "stack",
 ) -> DockFolder:
     """Keep a folder in the Dock, next to the Trash. One kept already is updated. The Dock restarts."""
-    added = macos.dock.add_folder(folder, view=view, sort=sort, display=display)
+    with _ITEMS:
+        added = macos.dock.add_folder(folder, view=view, sort=sort, display=display)
     return DockFolder(
         name=added.name,
         path=None if added.path is None else str(added.path),
@@ -311,7 +321,9 @@ def add_folder_to_dock(
 
 def remove_folder_from_dock(folder: Annotated[str, Field(description="The folder's path.", min_length=1)]) -> str:
     """Take a folder out of the Dock. The folder itself stays. The Dock restarts."""
-    if macos.dock.remove_folder(folder):
+    with _ITEMS:
+        removed = macos.dock.remove_folder(folder)
+    if removed:
         return "{} is out of the Dock.".format(folder)
     return "{} wasn't in the Dock.".format(folder)
 
@@ -321,13 +333,15 @@ def add_dock_spacer(
     small: Annotated[bool, Field(description="True for a narrower space.")] = False,
 ) -> str:
     """Add a blank space between the Dock's apps, to group them. The Dock restarts."""
-    macos.dock.add_spacer(index=index, small=small)
+    with _ITEMS:
+        macos.dock.add_spacer(index=index, small=small)
     return "Spacer added."
 
 
 def remove_dock_spacers() -> str:
     """Take every blank space out of the Dock's apps. The Dock restarts."""
-    count = macos.dock.remove_spacers()
+    with _ITEMS:
+        count = macos.dock.remove_spacers()
     return "{} spacer{} removed.".format(count, "" if count == 1 else "s")
 
 

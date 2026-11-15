@@ -1,9 +1,11 @@
 """The tools of mcp_server_macos.tools.dock, with macos.dock faked: the Dock isn't changed or restarted."""
 
 import contextlib
+import time
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Tuple
 
+import anyio
 import macos
 import pytest
 from mcp import Client
@@ -254,3 +256,32 @@ async def test_what_was_not_in_the_dock_is_said(client: Client, mac: Recorder, m
 
     assert text(app) == "Chess wasn't in the Dock."
     assert text(folder) == "~/Projects wasn't in the Dock."
+
+
+async def test_changes_to_the_items_at_once_are_all_kept(
+    client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # As pymacos does: read the whole list, take a moment, write it back. Two calls at once must not
+    # write over each other's change.
+    items: List[str] = []
+
+    def change(item: str) -> Any:
+        def call(*args: Any, **options: Any) -> Any:
+            read = list(items)
+            time.sleep(0.05)
+            items[:] = read + [item]
+            return SAFARI if item == "app" else DOWNLOADS if item == "folder" else 0
+
+        return call
+
+    monkeypatch.setattr(macos.dock, "add_spacer", change("spacer"))
+    monkeypatch.setattr(macos.dock, "add_app", change("app"))
+    monkeypatch.setattr(macos.dock, "add_folder", change("folder"))
+
+    async with anyio.create_task_group() as group:
+        group.start_soon(client.call_tool, "add_dock_spacer", {})
+        group.start_soon(client.call_tool, "add_dock_spacer", {"small": True})
+        group.start_soon(client.call_tool, "add_app_to_dock", {"app": "Safari"})
+        group.start_soon(client.call_tool, "add_folder_to_dock", {"folder": "~/Downloads"})
+
+    assert sorted(items) == ["app", "folder", "spacer", "spacer"]
