@@ -17,6 +17,7 @@ from mcp.server.mcpserver import MCPServer
 from . import (
     appearance,
     apps,
+    audio,
     auth,
     bluetooth,
     browser,
@@ -43,6 +44,8 @@ from . import (
     spotlight,
     system,
     time_machine,
+    video,
+    vision,
     volume,
 )
 
@@ -50,6 +53,7 @@ from . import (
 MODULES: Tuple[ModuleType, ...] = (
     appearance,
     apps,
+    audio,
     auth,
     bluetooth,
     browser,
@@ -76,6 +80,8 @@ MODULES: Tuple[ModuleType, ...] = (
     spotlight,
     system,
     time_machine,
+    video,
+    vision,
     volume,
 )
 

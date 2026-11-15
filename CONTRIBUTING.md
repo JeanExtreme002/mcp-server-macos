@@ -59,9 +59,20 @@ happens on the Mac is fixed in pymacos, and so is a missing feature.
 3. Register it in the module's `register(server)`, with `add_tool` and a title, and say what applies
    of these about it:
    - `annotations`: what it does to the Mac, which a client uses to decide when to ask the user first.
-     One of `READ_ONLY` (changes nothing), `ADDITIVE` (adds or shows something), `REPLACING` (sets
-     something to a given value), `DESTRUCTIVE` (deletes, or can't be taken back) and `OPEN_ENDED`
-     (opens or runs what may itself do anything), from `_registry.py`. When in doubt between two, take the more cautious one.
+     One of `READ_ONLY` (changes nothing), `READ_ONLY_ONLINE` (changes nothing, and asks a server on
+     the internet), `ADDITIVE` (adds or shows something), `REPLACING` (sets something to a given
+     value), `DESTRUCTIVE` (deletes, or can't be taken back) and `OPEN_ENDED` (opens or runs what may
+     itself do anything), from `_registry.py`. When in doubt between two, take the more cautious one.
+     Three questions settle most of it, asked of every argument the tool takes, not only of its usual
+     use:
+     - Can it be called twice and change more the second time? Then it isn't idempotent: neither
+       `READ_ONLY` nor `REPLACING`. A tool that writes to a path that may be its source is one (it
+       rotates, crops or re-encodes again), and so is one that toggles, adds or skips.
+     - Can any argument make it reach beyond this Mac (a URL, a page's resources, Apple's servers)?
+       Then it's open-world: `READ_ONLY_ONLINE` or `OPEN_ENDED`.
+     - Can it lose what was there (a file written over, a state the user had) or run what can do
+       anything (a script, an app, a link)? Then it's `DESTRUCTIVE` or `OPEN_ENDED`, whatever it does
+       most of the time.
    - `main_thread=True`, for the few features macOS only allows on the main thread (the geocoder, the
      camera...): pymacos raises `MainThreadError` for them elsewhere, and its docs say which they are.
      The tool then runs on the server's own thread, which answers nothing else meanwhile.
@@ -101,8 +112,8 @@ The tests are in two folders, with one file per module (`test_system.py` tests
   `sleep` process is started and ended, a sound is played at no volume, a preferences domain and a
   Keychain item of the tests' own are written and removed, Calculator is opened in the background and
   quit (unless it was open), three dialogs show for a second each, a folder of the tests' own is left
-  out of the Time Machine backups and put back, and documents, images and PDFs are made, converted
-  and edited in a temporary folder. They only use the tools that
+  out of the Time Machine backups and put back, and documents, images, PDFs, videos and sounds are
+  made, converted and edited in a temporary folder. The microphone isn't recorded. They only use the tools that
   leave things as they were: nothing is put to sleep, said out loud, turned off, installed or run, and
   no setting is changed.
 
