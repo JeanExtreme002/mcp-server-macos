@@ -31,6 +31,19 @@ EXCLUDED: Dict[str, str] = {
     "defaults.restored": "a with block around other calls: read_preference before and write_preference after do the same",
     "appearance.is_dark": "the same as mode() being 'dark', which get_appearance returns",
     "clipboard.watch": "yields copies for as long as it's iterated: a tool call returns once (wait_for_clipboard_change)",
+    "hotkeys.has_permission": "both of get_keyboard_status's permissions, Accessibility and Input Monitoring",
+    "hotkeys.register": "calls a Python function at each press: a tool call can't leave one behind (wait_for_shortcut)",
+    "hotkeys.unregister": "takes back what hotkeys.register left behind, which no tool does",
+    "hotkeys.run": "a script's loop calling hotkeys.register's functions, which no tool leaves behind",
+    "hotkeys.stop": "ends hotkeys.run, or a wait from another thread: a tool's wait ends with its timeout",
+    "events.on": "calls a Python function at each event: a tool call can't leave one behind (wait_for_event)",
+    "events.off": "takes back what events.on left behind, which no tool does",
+    "events.run": "a script's loop calling events.on's functions, which no tool leaves behind",
+    "events.stop": "ends events.run, or a wait from another thread: a tool's wait ends with its timeout",
+    "menubar.run": "keeps a script's menu bar items answering, calling Python functions: a tool call can't leave any",
+    "menubar.quit": "ends menubar.run, which no tool runs",
+    "menubar.every": "calls a Python function every so often while menubar.run runs, which no tool runs",
+    "windows.request_permission": "asks for Accessibility, as keyboard.request_permission does for every tool that needs it",
 }
 
 #: The modules of pymacos that have a toolset, but not yet a tool for everything they do.

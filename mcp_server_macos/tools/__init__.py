@@ -21,12 +21,15 @@ from . import (
     auth,
     bluetooth,
     browser,
+    camera,
     clipboard,
     defaults,
     dialog,
     dock,
     document,
+    events,
     finder,
+    hotkeys,
     image,
     keyboard,
     keychain,
@@ -53,6 +56,7 @@ from . import (
     video,
     vision,
     volume,
+    windows,
 )
 
 #: Every tool module, in the order the tools are listed to a client.
@@ -63,12 +67,15 @@ MODULES: Tuple[ModuleType, ...] = (
     auth,
     bluetooth,
     browser,
+    camera,
     clipboard,
     defaults,
     dialog,
     dock,
     document,
+    events,
     finder,
+    hotkeys,
     image,
     keyboard,
     keychain,
@@ -95,6 +102,7 @@ MODULES: Tuple[ModuleType, ...] = (
     video,
     vision,
     volume,
+    windows,
 )
 
 #: The modules by the name of their toolset: ``"system"`` for ``tools/system.py``.

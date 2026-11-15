@@ -50,7 +50,7 @@ _SAVED = threading.Lock()
 _TYPING = threading.Lock()
 
 
-def _read_layout_on_main_thread() -> None:
+def read_layout_on_main_thread() -> None:
     """
     Have the main thread read the keyboard layout in use, so that this worker can find its keys.
 
@@ -163,7 +163,7 @@ def press_keys(
     It does whatever the shortcut does in that app, sending, deleting or closing included: know what's
     in front first.
     """
-    _read_layout_on_main_thread()
+    read_layout_on_main_thread()
     with _TYPING:
         macos.keyboard.press(keys, times=times)
     return "Pressed {}{}.".format(keys, "" if times == 1 else " {} times".format(times))
@@ -194,7 +194,7 @@ def wait_for_key_press(
     Wait for the user to press a key, in any app, and say which: for a key the user is asked to press.
     The key still reaches the app in front. macOS hides the keys typed in password fields.
     """
-    _read_layout_on_main_thread()
+    read_layout_on_main_thread()
     keys = macos.keyboard.watch(timeout=timeout_seconds)
     try:
         pressed = next(iter(keys), None)

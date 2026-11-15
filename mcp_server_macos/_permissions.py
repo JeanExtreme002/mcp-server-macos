@@ -92,6 +92,14 @@ INPUT_MONITORING = Permission(
     restart=True,
 )
 
+#: Global shortcuts: listening to the keyboard, and keeping the shortcut from the app in front.
+INPUT_MONITORING_AND_ACCESSIBILITY = Permission(
+    name="Input Monitoring and Accessibility",
+    where="System Settings › Privacy & Security › Input Monitoring, and › Accessibility",
+    request=lambda: macos.hotkeys.request_permission(),
+    restart=True,
+)
+
 CAMERA = Permission(
     name="Camera",
     where="System Settings › Privacy & Security › Camera",
