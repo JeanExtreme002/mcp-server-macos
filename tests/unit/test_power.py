@@ -8,11 +8,18 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import macos
 import pytest
 from mcp import Client
+from mcp.server.mcpserver import MCPServer
 
 from mcp_server_macos import create_server
 from tests.helpers import Recorder, text
 
 pytestmark = pytest.mark.anyio
+
+
+@pytest.fixture
+def server() -> MCPServer:
+    """A server for each test: what keep_awake holds is the server's, and mustn't carry from one test to the next."""
+    return create_server()
 
 
 @pytest.fixture

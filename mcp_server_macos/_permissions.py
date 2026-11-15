@@ -133,13 +133,16 @@ NOTIFICATIONS = Permission(
 
 
 def missing(error: macos.PermissionDeniedError, permission: Optional[Permission]) -> str:
-    """The message for a model when ``error`` was raised for a missing permission, and it stays missing."""
+    """
+    The message for a model when ``error`` was raised, and stays: what pymacos said, and for a tool that
+    needs ``permission``, what the user has to allow.
+    """
     described = "{}: {}".format(type(error).__name__, error)
     if permission is None:
-        # The tool didn't say which permission it needs: what pymacos said is all there is.
-        return "{} Only the user can grant a permission: ask them to allow {}, and then try again.".format(
-            described, APP
-        )
+        # The tool needs no privacy permission, so what pymacos refused is something else, which its
+        # message says: a PDF's password, a preference a profile manages, a Keychain item the user
+        # didn't let through. Telling the model to have an app allowed would send it the wrong way.
+        return described
     return "{} {}".format(described, permission.instructions())
 
 

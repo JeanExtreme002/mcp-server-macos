@@ -31,8 +31,14 @@ def anyio_backend() -> str:
     return "asyncio"
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def server() -> MCPServer:
+    """
+    One server for the whole run: building one registers every tool, which takes a moment, and most
+    tests need nothing of their own from it. The tools look the functions of pymacos up when they're
+    called, so a test that fakes one still gets its fake. A test whose tools keep state (keeping the Mac
+    awake) gives itself a server of its own, by defining this fixture again.
+    """
     return create_server()
 
 

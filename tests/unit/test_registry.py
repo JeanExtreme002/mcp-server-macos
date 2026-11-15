@@ -132,7 +132,6 @@ async def test_expected_error_reaches_the_client_with_its_message() -> None:
 
     assert result.is_error
     assert "PermissionDeniedError: Screen Recording is off" in text(result)
-    assert "Only the user can grant a permission" in text(result)
 
 
 async def test_unexpected_error_reaches_the_client_without_its_message() -> None:
@@ -274,17 +273,16 @@ def test_prompt_that_fails_is_a_permission_still_missing() -> None:
     assert screen.calls == 1
 
 
-def test_missing_permission_of_a_tool_that_declares_none_is_reported() -> None:
-    screen = Screen()
+def test_refusal_of_a_tool_that_needs_no_permission_is_reported_as_pymacos_said() -> None:
+    # pymacos says PermissionDeniedError for more than the privacy permissions: an encrypted PDF opened
+    # without its password, a preference a profile manages. No app to allow, so none is named.
+    def tool() -> None:
+        raise macos.PermissionDeniedError("report.pdf is encrypted: pass its password")
 
     with pytest.raises(ToolError) as raised:
-        translate_errors(screen.tool)()
+        translate_errors(tool)()
 
-    assert str(raised.value) == (
-        "PermissionDeniedError: Screen Recording permission is missing "
-        "Only the user can grant a permission: ask them to allow {}, and then try again.".format(APP)
-    )
-    assert screen.calls == 1
+    assert str(raised.value) == "PermissionDeniedError: report.pdf is encrypted: pass its password"
 
 
 def test_other_errors_do_not_ask_for_a_permission() -> None:
