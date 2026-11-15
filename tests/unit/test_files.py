@@ -86,3 +86,28 @@ def test_umask_of_the_process_is_never_changed(tmp_path: Path, monkeypatch: pyte
 
     _files.write(str(tmp_path / "new.png"), b"x")
     _files.write(str(tmp_path / "new.png"), b"y")
+
+
+def test_private_file_is_never_readable_by_others_while_written(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # Whatever the umask gives a new file, the bytes of a 0600 file only ever sit in a 0600 file.
+    existing = tmp_path / "private.png"
+    existing.write_bytes(b"old")
+    existing.chmod(0o600)
+    modes = []
+    opened = os.fdopen
+
+    def watch(descriptor: int, *args: object, **options: object) -> object:
+        modes.append(os.fstat(descriptor).st_mode & 0o777)
+        return opened(descriptor, *args, **options)  # type: ignore[call-overload]
+
+    monkeypatch.setattr(os, "fdopen", watch)
+    mask = os.umask(0o022)
+    try:
+        _files.write(str(existing), b"secret")
+    finally:
+        os.umask(mask)
+
+    assert modes == [0o600]
+    assert existing.stat().st_mode & 0o777 == 0o600

@@ -20,10 +20,12 @@ def write(path: str, data: bytes) -> Path:
         target = target.resolve()
     temporary = _create(target.parent)
     try:
+        if target.exists():
+            # While the file is still empty: a private file's bytes are never readable by others, even
+            # for the moment before it takes the old one's place.
+            shutil.copymode(target, temporary)
         with os.fdopen(os.open(temporary, os.O_WRONLY), "wb") as written:
             written.write(data)
-        if target.exists():
-            shutil.copymode(target, temporary)
         os.replace(temporary, target)
     except BaseException:
         temporary.unlink(missing_ok=True)
