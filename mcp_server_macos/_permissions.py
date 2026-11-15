@@ -103,6 +103,17 @@ BLUETOOTH = Permission(
     where="System Settings › Privacy & Security › Bluetooth",
 )
 
+#: Running JavaScript in a browser's tab, which each browser turns on in its own menu.
+BROWSER_JAVASCRIPT = Permission(
+    name="Allow JavaScript from Apple Events",
+    app="the browser",
+    where=(
+        "its own menu: in Safari, Develop › Allow JavaScript from Apple Events (the Develop menu shows once it's "
+        "turned on in Safari › Settings › Advanced); in Chrome and the other Chromium browsers, View › Developer › "
+        "Allow JavaScript from Apple Events"
+    ),
+)
+
 FULL_DISK_ACCESS = Permission(
     name="Full Disk Access",
     where="System Settings › Privacy & Security › Full Disk Access",

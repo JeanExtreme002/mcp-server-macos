@@ -100,7 +100,8 @@ The tests are in two folders, with one file per module (`test_system.py` tests
   and the Mac is kept awake for a moment, a small disk image is made, mounted and unmounted, and a
   `sleep` process is started and ended, a sound is played at no volume, a preferences domain and a
   Keychain item of the tests' own are written and removed, Calculator is opened in the background and
-  quit (unless it was open), and three dialogs show for a second each. They only use the tools that
+  quit (unless it was open), three dialogs show for a second each, a folder of the tests' own is left
+  out of the Time Machine backups and put back, and text files are converted in a temporary folder. They only use the tools that
   leave things as they were: nothing is put to sleep, said out loud, turned off, installed or run, and
   no setting is changed.
 
