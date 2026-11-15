@@ -94,6 +94,18 @@ ANNOTATIONS = {
     "ask_choice": ADDITIVE,
     "ask_for_files": ADDITIVE,
     "ask_for_folder": ADDITIVE,
+    # dock
+    "get_dock_settings": READ_ONLY,
+    "list_dock_items": READ_ONLY,
+    "set_dock_settings": REPLACING,
+    "set_hot_corner": REPLACING,
+    "remove_app_from_dock": REPLACING,
+    "remove_folder_from_dock": REPLACING,
+    "remove_dock_spacers": REPLACING,
+    "restart_dock": REPLACING,
+    "add_app_to_dock": REPLACING,
+    "add_folder_to_dock": REPLACING,
+    "add_dock_spacer": ADDITIVE,
     # document
     "read_document_text": READ_ONLY_ONLINE,
     "convert_document": OPEN_ENDED,
@@ -262,6 +274,9 @@ ANNOTATIONS = {
     "stop_backup": REPLACING,
     "check_backup_exclusion": READ_ONLY,
     "set_backup_exclusion": REPLACING,
+    # trackpad
+    "get_trackpad_settings": READ_ONLY,
+    "set_trackpad_settings": REPLACING,
     # video
     "get_video_info": READ_ONLY,
     "get_video_frame": READ_ONLY,
