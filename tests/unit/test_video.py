@@ -46,6 +46,8 @@ async def test_get_video_frame(client: Client, monkeypatch: pytest.MonkeyPatch) 
 
 async def test_save_video_frames(client: Client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     recorder = Recorder()
+    info = macos.video.VideoInfo(duration=9.0, width=1920, height=1080, fps=30.0, codec="h264", has_audio=True)
+    monkeypatch.setattr(macos.video, "info", lambda path: info)
     monkeypatch.setattr(macos.video, "frames", recorder.function("frames", [b"one", b"two"]))
     folder = tmp_path / "new" / "frames"
 
@@ -57,6 +59,31 @@ async def test_save_video_frames(client: Client, monkeypatch: pytest.MonkeyPatch
     assert result.structured_content == {"paths": [str(folder / "frame-000.png"), str(folder / "frame-001.png")]}
     assert (folder / "frame-001.png").read_bytes() == b"two"
     assert recorder.calls == [("frames", ("clip.mov", 5.0), {"size": 320})]
+
+
+@pytest.mark.parametrize(
+    "arguments, why",
+    [
+        # A two-hour video at a frame a second: 7200 frames.
+        ({"every_seconds": 1}, "7200 frames of 1024 pixels are more than can be made at once"),
+        # At the video's own size, fewer fit.
+        ({"every_seconds": 60, "size": None}, "120 frames of 3840 pixels"),
+    ],
+)
+async def test_save_video_frames_does_not_make_more_than_memory_holds(
+    client: Client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path, arguments: Dict[str, Any], why: str
+) -> None:
+    recorder = Recorder()
+    info = macos.video.VideoInfo(duration=7200.0, width=3840, height=2160, fps=30.0, codec="hevc", has_audio=True)
+    monkeypatch.setattr(macos.video, "info", lambda path: info)
+    monkeypatch.setattr(macos.video, "frames", recorder.function("frames", []))
+
+    result = await client.call_tool("save_video_frames", {"path": "film.mov", "folder": str(tmp_path), **arguments})
+
+    assert result.is_error
+    assert why in text(result)
+    assert "save one every" in text(result)
+    assert recorder.calls == []
 
 
 WRITERS: Dict[str, Tuple[Dict[str, Any], str, Tuple[Any, ...], Dict[str, Any]]] = {
@@ -135,6 +162,8 @@ async def test_video_is_written_as_asked(client: Client, monkeypatch: pytest.Mon
         ("change_video_speed", {"source": "a.mov", "output": "b.mov", "factor": 0}),
         ("add_audio_to_video", {"video": "a.mov", "audio": "m.m4a", "output": "b.mp4", "volume": 2}),
         ("join_videos", {"videos": [], "output": "c.mp4"}),
+        ("video_to_gif", {"source": "a.mov", "output": "a.gif", "fps": 60}),
+        ("crop_video", {"source": "a.mov", "output": "b.mov", "x": 0, "y": 0, "width": 1, "height": 10}),
     ],
 )
 async def test_videos_are_not_touched_without_what_they_need(

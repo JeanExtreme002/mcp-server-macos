@@ -108,10 +108,16 @@ async def test_devices_are_switched(client: Client, audio: Recorder, tool: str, 
             [("set_input_volume", (0.3,), {"device": "USB Mic"})],
             "Microphone: volume 30.",
         ),
+        # Unmuted last, muted first: a change that fails doesn't leave the microphone live.
         (
             {"volume": 0, "muted": False},
-            [("mute_input", (False,), {"device": None}), ("set_input_volume", (0.0,), {"device": None})],
-            "Microphone: unmuted, volume 0.",
+            [("set_input_volume", (0.0,), {"device": None}), ("mute_input", (False,), {"device": None})],
+            "Microphone: volume 0, unmuted.",
+        ),
+        (
+            {"volume": 80, "muted": True},
+            [("mute_input", (True,), {"device": None}), ("set_input_volume", (0.8,), {"device": None})],
+            "Microphone: muted, volume 80.",
         ),
     ],
 )
@@ -122,6 +128,19 @@ async def test_set_microphone(
 
     assert text(result) == said
     assert audio.calls == calls
+
+
+async def test_microphone_is_not_unmuted_when_its_volume_fails(
+    client: Client, audio: Recorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        macos.audio, "set_input_volume", audio.function("set_input_volume", error=macos.MacOSError("no volume control"))
+    )
+
+    result = await client.call_tool("set_microphone", {"volume": 50, "muted": False})
+
+    assert result.is_error
+    assert audio.names == ["set_input_volume"]
 
 
 async def test_record_microphone(client: Client, audio: Recorder) -> None:
@@ -251,6 +270,7 @@ async def test_audio_file_is_written_as_asked(client: Client, monkeypatch: pytes
         ("record_microphone", {"path": "a.m4a", "seconds": 601}),
         ("record_microphone", {"path": "a.m4a", "seconds": 5, "channels": 3}),
         ("record_until_silence", {"path": "a.m4a", "max_seconds": 0}),
+        ("record_until_silence", {"path": "a.m4a", "threshold": 1}),
         ("get_microphone_level", {"seconds": 11}),
         ("convert_audio", {"source": "a.wav", "output": "b.m4a", "quality": "best"}),
         ("change_audio_volume", {"source": "a.wav", "output": "b.wav", "decibels": 100}),

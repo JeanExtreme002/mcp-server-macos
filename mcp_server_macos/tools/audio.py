@@ -180,12 +180,17 @@ def set_microphone(
     if volume is None and muted is None:
         raise ValueError("no setting was given: say the volume, muted, or both")
     changed: List[str] = []
-    if muted is not None:
-        macos.audio.mute_input(muted, device=device)
-        changed.append("muted" if muted else "unmuted")
+    # Muting goes first, and unmuting last: if the other change fails, the microphone isn't left live
+    # when it was asked to be muted, nor live at a volume it was asked to leave.
+    if muted is True:
+        macos.audio.mute_input(True, device=device)
+        changed.append("muted")
     if volume is not None:
         macos.audio.set_input_volume(volume / 100, device=device)
         changed.append("volume {}".format(volume))
+    if muted is False:
+        macos.audio.mute_input(False, device=device)
+        changed.append("unmuted")
     return "Microphone: {}.".format(", ".join(changed))
 
 
@@ -207,7 +212,9 @@ def record_until_silence(
         float, Field(description="The longest to record, in seconds: up to 600.", gt=0, le=LONGEST_WAIT)
     ] = 60.0,
     silence_seconds: Annotated[float, Field(description="How long a quiet ends it, in seconds.", gt=0, le=60)] = 1.5,
-    threshold: Annotated[float, Field(description="The level that counts as sound, from 0 to 1.", gt=0, le=1)] = 0.02,
+    threshold: Annotated[
+        float, Field(description="The level that counts as sound, between 0 and 1, both left out.", gt=0, lt=1)
+    ] = 0.02,
     channels: Channels = 1,
 ) -> Saved:
     """

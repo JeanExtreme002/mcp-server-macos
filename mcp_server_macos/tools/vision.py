@@ -1,6 +1,5 @@
 """Tools that understand images with Apple's Vision framework, offline: text, codes, faces, poses, from ``macos.vision``."""
 
-from pathlib import Path
 from typing import Annotated, Dict, List, Optional
 
 import macos
@@ -8,6 +7,7 @@ from mcp.server.mcpserver import MCPServer
 from mcp.server.mcpserver.exceptions import ToolError
 from pydantic import BaseModel, Field
 
+from .. import _files
 from .._registry import DESTRUCTIVE, READ_ONLY, add_tool
 
 ImagePath = Annotated[
@@ -130,9 +130,8 @@ class Saved(BaseModel):
 def _save(output: str, data: Optional[bytes], nothing: str) -> Saved:
     if data is None:
         raise ToolError(nothing)
-    saved = Path(output).expanduser()
-    saved.write_bytes(data)
-    return Saved(path=str(saved.absolute()))
+    # The output may be the source: written beside it first, so a failure loses neither.
+    return Saved(path=str(_files.write(output, data)))
 
 
 def read_text_in_image(image: ImagePath, languages: Languages = None, fast: Fast = False) -> ImageText:

@@ -8,6 +8,7 @@ import macos
 from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
+from .. import _files
 from .._registry import DESTRUCTIVE, READ_ONLY, REPLACING, add_tool
 from .._values import plain
 
@@ -281,9 +282,7 @@ def make_qr_code(
     ] = "M",
 ) -> Saved:
     """Make a QR code for an address or a text, as a PNG."""
-    saved = Path(output).expanduser()
-    saved.write_bytes(macos.image.qr_code(content, size=size, correction=correction))
-    return _saved(saved.absolute())
+    return _saved(_files.write(output, macos.image.qr_code(content, size=size, correction=correction)))
 
 
 def register(server: MCPServer) -> None:

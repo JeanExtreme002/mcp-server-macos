@@ -1,5 +1,6 @@
 """Tools that read, convert and edit videos, with AVFoundation, from ``macos.video``."""
 
+import math
 from pathlib import Path
 from typing import Annotated, List, Literal, Optional
 
@@ -22,10 +23,9 @@ Output = Annotated[
 ]
 Start = Annotated[Optional[float], Field(description="Where to start, in seconds from the beginning.", ge=0)]
 Duration = Annotated[Optional[float], Field(description="How long to keep, in seconds. To the end by default.", gt=0)]
-FrameSize = Annotated[
-    Optional[int],
-    Field(description="The longest side of the picture, in pixels. The video's own by default.", ge=16, le=8192),
-]
+# The frames save_video_frames may make at once, counted in pixels: 500 frames of 1024 x 1024. pymacos
+# makes them all before they're saved, so this is what bounds the memory a call takes.
+FRAME_BUDGET = 500 * 1024 * 1024
 
 
 class VideoInfo(BaseModel):
@@ -89,12 +89,24 @@ def save_video_frames(
     every_seconds: Annotated[
         float, Field(description="Save a frame every so many seconds, from the start.", gt=0)
     ] = 1.0,
-    size: FrameSize = None,
+    size: Annotated[
+        Optional[int],
+        Field(description="The longest side of each frame, in pixels. Null for the video's own size.", ge=16, le=8192),
+    ] = 1024,
 ) -> SavedFiles:
     """
-    Save frames of a video, one every so many seconds, as PNGs in a folder. A long video gives many: a
-    10-minute one, at one a second, gives 600.
+    Save frames of a video, one every so many seconds, as PNGs in a folder. The frames are all made
+    before they're saved, so their number is bounded: some 500 at 1024 pixels, fewer when larger. For a
+    long video, save one every few seconds, or smaller ones.
     """
+    info = macos.video.info(path)
+    count = max(1, math.ceil(info.duration / every_seconds))
+    side = size or max(info.width, info.height, 1)
+    if count * side * side > FRAME_BUDGET:
+        raise ValueError(
+            "{} frames of {} pixels are more than can be made at once: save one every {:g} seconds or more, or "
+            "smaller ones".format(count, side, math.ceil(count * side * side / FRAME_BUDGET * every_seconds))
+        )
     saved = Path(folder).expanduser()
     saved.mkdir(parents=True, exist_ok=True)
     paths: List[str] = []
@@ -141,7 +153,7 @@ def convert_video(
 def video_to_gif(
     source: VideoPath,
     output: Annotated[str, Field(description="Where to save the GIF. A file already there is replaced.", min_length=1)],
-    fps: Annotated[float, Field(description="The GIF's frames per second.", gt=0, le=60)] = 10.0,
+    fps: Annotated[float, Field(description="The GIF's frames per second, up to 50.", gt=0, le=50)] = 10.0,
     width: Annotated[
         int, Field(description="The GIF's width, in pixels, never wider than the video.", ge=16, le=4096)
     ] = 480,
@@ -204,8 +216,8 @@ def crop_video(
     output: Output,
     x: Annotated[int, Field(description="The left edge of the part to keep, in pixels from the left.", ge=0)],
     y: Annotated[int, Field(description="The top edge of the part to keep, in pixels from the top.", ge=0)],
-    width: Annotated[int, Field(description="The width of the part to keep, in pixels.", gt=0)],
-    height: Annotated[int, Field(description="The height of the part to keep, in pixels.", gt=0)],
+    width: Annotated[int, Field(description="The width of the part to keep, in pixels: 2 at least.", ge=2)],
+    height: Annotated[int, Field(description="The height of the part to keep, in pixels: 2 at least.", ge=2)],
 ) -> Saved:
     """Keep the part of a video inside a box, measured on the picture as it plays. An odd width or height loses its last pixel."""
     return _saved(macos.video.crop(source, output, (x, y, width, height)))

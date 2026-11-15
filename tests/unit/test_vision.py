@@ -225,3 +225,19 @@ async def test_images_are_not_read_without_what_they_need(
 
     assert result.is_error
     assert recorder.calls == []
+
+
+async def test_picture_saved_over_its_source_is_written_whole(
+    client: Client, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    source = tmp_path / "photo.png"
+    source.write_bytes(b"the photo")
+    monkeypatch.setattr(macos.vision, "smart_crop", lambda image, width, height: b"the crop")
+
+    result = await client.call_tool(
+        "smart_crop_image", {"image": str(source), "output": str(source), "width": 10, "height": 10}
+    )
+
+    assert not result.is_error, text(result)
+    assert source.read_bytes() == b"the crop"
+    assert [path.name for path in tmp_path.iterdir()] == ["photo.png"]
