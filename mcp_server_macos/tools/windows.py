@@ -296,7 +296,8 @@ def tile_windows(
 ) -> List[Window]:
     """
     Arrange windows side by side in a grid, filling the display: every window on screen, an app's, or
-    those given. Minimized and full-screen windows, and those of hidden apps, stay as they are.
+    those given. Chosen for you, minimized and full-screen windows and those of hidden apps stay as they
+    are; those given are all arranged, a minimized one too.
     """
     if windows is not None:
         if app is not None:
