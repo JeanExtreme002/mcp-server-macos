@@ -269,7 +269,10 @@ def list_dock_items() -> DockItems:
 
 
 def add_app_to_dock(app: AppName, index: Index = None) -> DockApp:
-    """Keep an app in the Dock. One kept already isn't added twice. The Dock restarts."""
+    """
+    Keep an app in the Dock. One kept already isn't added twice, and what the Dock kept at the app's path
+    as something else (a folder tile) is taken out. The Dock restarts.
+    """
     added = macos.dock.add_app(app, index=index)
     return DockApp(name=added.name, path=None if added.path is None else str(added.path), bundle_id=added.bundle_id)
 
@@ -347,11 +350,10 @@ def register(server: MCPServer) -> None:
         (restart_dock, "Restart the Dock"),
         # Keeping a folder kept already updates it: how it opened and sorted is replaced.
         (add_folder_to_dock, "Keep a folder in the Dock"),
+        # Keeping an app takes out what the Dock kept at its path as something else, a folder tile say.
+        (add_app_to_dock, "Keep an app in the Dock"),
     ):
         add_tool(server, setter, title=title, annotations=REPLACING)
     # These add to the Dock: a spacer added again is another one.
-    for adder, title in (
-        (add_app_to_dock, "Keep an app in the Dock"),
-        (add_dock_spacer, "Add a spacer to the Dock"),
-    ):
+    for adder, title in ((add_dock_spacer, "Add a spacer to the Dock"),):
         add_tool(server, adder, title=title, annotations=ADDITIVE)

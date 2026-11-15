@@ -103,7 +103,7 @@ ANNOTATIONS = {
     "remove_folder_from_dock": REPLACING,
     "remove_dock_spacers": REPLACING,
     "restart_dock": REPLACING,
-    "add_app_to_dock": ADDITIVE,
+    "add_app_to_dock": REPLACING,
     "add_folder_to_dock": REPLACING,
     "add_dock_spacer": ADDITIVE,
     # document
