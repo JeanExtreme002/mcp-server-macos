@@ -129,7 +129,8 @@ def register(server: MCPServer) -> None:
     add_tool(server, get_current_tab, title="Get the current browser tab", annotations=READ_ONLY, permission=AUTOMATION)
     add_tool(server, open_in_browser, title="Open an address in the browser", annotations=OPEN_ENDED, permission=AUTOMATION)
     add_tool(server, switch_to_browser_tab, title="Switch to a browser tab", annotations=REPLACING, permission=AUTOMATION)
-    add_tool(server, reload_browser_tab, title="Reload a browser tab", annotations=REPLACING, permission=AUTOMATION)
+    # Reloading fetches the page again, and may send a form it posted again: as open-ended as navigating.
+    add_tool(server, reload_browser_tab, title="Reload a browser tab", annotations=OPEN_ENDED, permission=AUTOMATION)
     add_tool(server, navigate_browser_tab, title="Load an address in a tab", annotations=OPEN_ENDED, permission=AUTOMATION)
     add_tool(server, close_browser_tab, title="Close a browser tab", annotations=DESTRUCTIVE, permission=AUTOMATION)
     add_tool(

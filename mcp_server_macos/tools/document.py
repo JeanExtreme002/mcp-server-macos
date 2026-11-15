@@ -6,7 +6,7 @@ import macos
 from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
-from .._registry import READ_ONLY, REPLACING, add_tool
+from .._registry import OPEN_ENDED, READ_ONLY_ONLINE, add_tool
 
 Resources = Annotated[
     bool,
@@ -73,6 +73,8 @@ def convert_document(
 
 
 def register(server: MCPServer) -> None:
-    # HTML is read by WebKit, which macOS only allows on the main thread.
-    add_tool(server, read_document_text, title="Read a document's text", annotations=READ_ONLY, main_thread=True)
-    add_tool(server, convert_document, title="Convert a document", annotations=REPLACING, main_thread=True)
+    # HTML is read by WebKit, which macOS only allows on the main thread. With resources, a page is
+    # fetched from the web as a browser would: they reach beyond this Mac. Converting also writes a file,
+    # over the one that may be there, so it's marked as cautiously as can be.
+    add_tool(server, read_document_text, title="Read a document's text", annotations=READ_ONLY_ONLINE, main_thread=True)
+    add_tool(server, convert_document, title="Convert a document", annotations=OPEN_ENDED, main_thread=True)

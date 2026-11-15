@@ -7,7 +7,7 @@ from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
 from .._permissions import AUTOMATION
-from .._registry import READ_ONLY, REPLACING, add_tool
+from .._registry import ADDITIVE, READ_ONLY, REPLACING, add_tool
 
 Player = Annotated[
     Optional[Literal["Music", "Spotify"]],
@@ -107,6 +107,8 @@ def seek_music(
 def register(server: MCPServer) -> None:
     # The players are asked through AppleScript, which macOS asks the user to allow, the first time.
     add_tool(server, get_now_playing, title="Get what's playing", annotations=READ_ONLY, permission=AUTOMATION)
-    add_tool(server, control_music, title="Play, pause or skip music", annotations=REPLACING, permission=AUTOMATION)
+    # Not idempotent: calling 'next' again skips another song, and 'play_pause' again undoes the first.
+    # Nor destructive: nothing is lost, and the song can be gone back to.
+    add_tool(server, control_music, title="Play, pause or skip music", annotations=ADDITIVE, permission=AUTOMATION)
     add_tool(server, set_music_volume, title="Set the music player's volume", annotations=REPLACING, permission=AUTOMATION)
     add_tool(server, seek_music, title="Jump to a point of the song", annotations=REPLACING, permission=AUTOMATION)

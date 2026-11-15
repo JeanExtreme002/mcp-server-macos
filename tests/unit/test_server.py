@@ -53,7 +53,7 @@ ANNOTATIONS = {
     "get_current_tab": READ_ONLY,
     "open_in_browser": OPEN_ENDED,
     "switch_to_browser_tab": REPLACING,
-    "reload_browser_tab": REPLACING,
+    "reload_browser_tab": OPEN_ENDED,
     "navigate_browser_tab": OPEN_ENDED,
     "close_browser_tab": DESTRUCTIVE,
     "run_javascript_in_browser": OPEN_ENDED,
@@ -78,8 +78,8 @@ ANNOTATIONS = {
     "ask_for_files": ADDITIVE,
     "ask_for_folder": ADDITIVE,
     # document
-    "read_document_text": READ_ONLY,
-    "convert_document": REPLACING,
+    "read_document_text": READ_ONLY_ONLINE,
+    "convert_document": OPEN_ENDED,
     # keychain
     "list_keychain_accounts": READ_ONLY,
     "get_keychain_password": READ_ONLY,
@@ -101,7 +101,7 @@ ANNOTATIONS = {
     "show_directions_in_maps": ADDITIVE,
     # music
     "get_now_playing": READ_ONLY,
-    "control_music": REPLACING,
+    "control_music": ADDITIVE,
     "set_music_volume": REPLACING,
     "seek_music": REPLACING,
     # network
