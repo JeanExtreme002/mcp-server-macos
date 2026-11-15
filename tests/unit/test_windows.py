@@ -22,21 +22,32 @@ class FakeWindow:
         self, recorder: Recorder, app: str, title: str, frame: Tuple[float, float, float, float] = (0, 25, 800, 600)
     ) -> None:
         self.app, self.pid, self.title, self.frame = app, 42, title, frame
-        self.minimized = self.fullscreen = False
-        for name in (
-            "focus",
-            "move",
-            "resize",
-            "set_frame",
-            "snap",
-            "center",
-            "minimize",
-            "restore",
-            "set_fullscreen",
-            "close",
-        ):
+        self.fullscreen = False
+        for name in ("focus", "move", "resize", "set_frame", "snap", "center", "set_fullscreen", "close"):
             setattr(self, name, self._recorded(recorder, name))
         self.screenshot = recorder.function("screenshot", "/tmp/window.png")
+        # As macOS does: minimized, or back, only once the animation is over, a few reads later.
+        self._minimize, self._restore = self._recorded(recorder, "minimize"), self._recorded(recorder, "restore")
+        self._settling: List[bool] = []
+        self._shown_minimized = False
+
+    def minimize(self) -> None:
+        self._minimize()
+        self._settling = [self._shown_minimized] * 3 + [True]
+
+    def restore(self) -> None:
+        self._restore()
+        self._settling = [self._shown_minimized] * 3 + [False]
+
+    @property
+    def minimized(self) -> bool:
+        if self._settling:
+            self._shown_minimized = self._settling.pop(0)
+        return self._shown_minimized
+
+    @minimized.setter
+    def minimized(self, value: bool) -> None:
+        self._shown_minimized = value
 
     def _recorded(self, recorder: Recorder, name: str) -> Any:
         call = recorder.function(name)
@@ -45,6 +56,12 @@ class FakeWindow:
             call(self.title, *args, **options)
 
         return method
+
+
+@pytest.fixture(autouse=True)
+def instant(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The fake windows take a few reads to change, as macOS's do: read without pausing in between."""
+    monkeypatch.setattr(windows, "_pause", lambda seconds: None)
 
 
 @pytest.fixture
@@ -174,6 +191,31 @@ async def test_set_window_state(client: Client, mac: Recorder, arguments: Dict[s
     assert mac.calls == calls
 
 
+@pytest.mark.parametrize("minimized", [True, False])
+async def test_the_state_told_is_the_one_the_window_is_in(
+    client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch, minimized: bool
+) -> None:
+    # macOS says a window is minimized, or back, only once its animation is over: the tool waits for it.
+    mac.windows[1].minimized = not minimized  # type: ignore[attr-defined]
+
+    result = await client.call_tool("set_window_state", {"minimized": minimized})
+
+    assert result.structured_content is not None
+    assert result.structured_content["minimized"] is minimized
+
+
+async def test_a_window_that_doesnt_minimize(client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    clock = iter(range(0, 100))
+    monkeypatch.setattr(windows, "_clock", lambda: next(clock))
+    stuck = mac.windows[1]  # type: ignore[attr-defined]
+    monkeypatch.setattr(stuck, "minimize", lambda: None)  # asked, and nothing happens
+
+    result = await client.call_tool("set_window_state", {"minimized": True})
+
+    assert result.is_error
+    assert "WaitTimeoutError: could not minimize the window of TextEdit within 3 seconds" in text(result)
+
+
 async def test_close_window(client: Client, mac: Recorder) -> None:
     result = await client.call_tool("close_window", {"app": "TextEdit", "title": "notes"})
 
@@ -290,6 +332,8 @@ async def test_without_the_permission_it_is_asked_for(client: Client, monkeypatc
         ("snap_window", {"layout": "center", "display": 2}),
         ("snap_window", {"layout": "middle"}),
         ("set_window_state", {}),
+        # A window in full screen can't be minimized: refused before anything is done.
+        ("set_window_state", {"minimized": True, "fullscreen": True}),
         ("tile_windows", {"app": "TextEdit", "windows": [{"app": "TextEdit"}]}),
         ("tile_windows", {"windows": []}),
         ("tile_windows", {"columns": 0}),

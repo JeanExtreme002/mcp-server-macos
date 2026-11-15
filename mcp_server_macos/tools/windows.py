@@ -3,6 +3,7 @@ Tools for the windows of running apps: listing, focusing, moving, resizing, snap
 screen, closing, capturing and tiling them, and the windows' settings, from ``macos.windows``.
 """
 
+import time
 from typing import Annotated, Any, Callable, List, Literal, Optional, Tuple, Union
 
 import macos
@@ -44,6 +45,11 @@ Layout = Literal[
     "center",
 ]
 TitleBarAction = Literal["zoom", "fill", "minimize", "nothing"]
+
+# How long a window may take to be minimized or back: the animation takes about half a second.
+_SETTLING = 3.0
+# The clock and the pause the wait goes by, apart so the tests can pass time without waiting it.
+_clock, _pause = time.monotonic, time.sleep
 
 
 class Window(BaseModel):
@@ -218,14 +224,35 @@ def set_window_state(
     """Minimize a window or bring it back, or make it full screen or not, as its yellow and green buttons do."""
     if minimized is None and fullscreen is None:
         raise ValueError("say what to change: minimized, fullscreen or both")
+    if minimized and fullscreen:
+        raise ValueError("a window in full screen can't be minimized: ask for one or the other")
     window = _window(app, title)
     if minimized is False:
         window.restore()
+        _settle(window, minimized=False)  # before full screen, which needs the window back
     if fullscreen is not None:
-        window.set_fullscreen(fullscreen)
+        window.set_fullscreen(fullscreen)  # pymacos returns once the change is done
     if minimized:
         window.minimize()
+        _settle(window, minimized=True)
     return _described(window)
+
+
+def _settle(window: Any, *, minimized: bool) -> None:
+    """
+    Wait for the window to be minimized, or back, as asked: macOS animates it, and says so only once the
+    animation is over, half a second later. What's told of the window is then what it is.
+    """
+    deadline = _clock() + _SETTLING
+    while window.minimized != minimized:
+        if _clock() > deadline:
+            # As pymacos's set_fullscreen says it: too slow, its app refusing, or a window closed meanwhile.
+            raise macos.WaitTimeoutError(
+                "could not {} the window of {} within {:g} seconds".format(
+                    "minimize" if minimized else "restore", window.app, _SETTLING
+                )
+            )
+        _pause(0.05)
 
 
 def close_window(app: App = None, title: Title = None) -> str:

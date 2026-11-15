@@ -102,7 +102,10 @@ def ask_choice(
     default: Annotated[Optional[str], Field(description="The option selected when the dialog opens.")] = None,
     title: Title = None,
 ) -> Choice:
-    """Let the user pick one option from a list, in a dialog. It waits until they answer."""
+    """
+    Let the user pick one option from a list, in a dialog. It waits until they answer, with no time
+    limit: ask only while the user is at the Mac.
+    """
     return Choice(choice=macos.dialog.choose(options, prompt=prompt, default=default, title=title))
 
 
@@ -112,7 +115,10 @@ def ask_for_files(
     folder: StartFolder = None,
     multiple: Annotated[bool, Field(description="True to let the user pick several files.")] = False,
 ) -> ChosenPaths:
-    """Let the user pick a file, or several, in the system's file picker. It waits until they answer."""
+    """
+    Let the user pick a file, or several, in the system's file picker. It waits until they answer, with
+    no time limit: ask only while the user is at the Mac.
+    """
     if multiple:
         return ChosenPaths(paths=[str(path) for path in macos.dialog.choose_files(prompt, types=types, folder=folder)])
     chosen = macos.dialog.choose_file(prompt, types=types, folder=folder)
@@ -123,7 +129,10 @@ def ask_for_folder(
     prompt: Annotated[Optional[str], Field(description="What the picker says.")] = None,
     folder: StartFolder = None,
 ) -> ChosenPaths:
-    """Let the user pick a folder in the system's folder picker. It waits until they answer."""
+    """
+    Let the user pick a folder in the system's folder picker. It waits until they answer, with no time
+    limit: ask only while the user is at the Mac.
+    """
     chosen = macos.dialog.choose_folder(prompt, folder=folder)
     return ChosenPaths(paths=[] if chosen is None else [str(chosen)])
 
