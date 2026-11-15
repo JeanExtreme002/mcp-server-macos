@@ -87,6 +87,7 @@ async def test_gestures_offered_are_those_of_pymacos() -> None:
     "arguments, why",
     [
         ({}, "no setting was given"),
+        ({"gestures": {}}, "no setting was given"),
         ({"gestures": {"pinch": True}, "tap_to_click": True}, "gestures must be among"),
         ({"gestures": {"rotate": 3}, "tap_to_click": True}, "rotate is on or off"),
         ({"tracking_speed": 1.5}, "set_trackpad_settings"),

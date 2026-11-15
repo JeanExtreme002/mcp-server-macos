@@ -80,6 +80,7 @@ def set_trackpad_settings(
     Change the trackpad's settings, like System Settings › Trackpad. Give only the settings to change: the
     others stay as they are. Most apply at once; the pointer speed at the next login.
     """
+    # An empty gestures is no setting either: nothing would change, and saying it did would be wrong.
     settings = (
         tap_to_click,
         natural_scrolling,
@@ -87,7 +88,7 @@ def set_trackpad_settings(
         three_finger_drag,
         secondary_click,
         click_pressure,
-        gestures,
+        gestures or None,
     )
     if all(setting is None for setting in settings):
         raise ValueError("no setting was given: say which one to change")
