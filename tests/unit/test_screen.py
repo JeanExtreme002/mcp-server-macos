@@ -184,6 +184,8 @@ async def test_screen_files(
 ) -> None:
     recorder = Recorder()
     monkeypatch.setattr(macos.screen, "displays", lambda: [BUILT_IN, EXTERNAL])
+    # A recording with sound checks the microphone first: here, without macOS's.
+    monkeypatch.setattr(macos.audio, "has_permission", lambda: True)
     monkeypatch.setattr(macos.screen, call[0], recorder.function(call[0], pathlib.Path(call[1][0])))
 
     result = await client.call_tool(tool, arguments)
