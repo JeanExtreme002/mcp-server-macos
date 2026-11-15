@@ -18,6 +18,7 @@ PROMPTS = {
     "Screen Recording": "screen.request_permission",
     "Accessibility": "keyboard.request_permission",
     "Input Monitoring": "keyboard.request_listen_permission",
+    "Input Monitoring and Accessibility": "hotkeys.request_permission",
     "Camera": "camera.request_permission",
     "Microphone": "audio.request_permission",
 }

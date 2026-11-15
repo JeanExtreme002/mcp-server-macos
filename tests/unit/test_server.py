@@ -74,6 +74,11 @@ ANNOTATIONS = {
     "navigate_browser_tab": OPEN_ENDED,
     "close_browser_tab": DESTRUCTIVE,
     "run_javascript_in_browser": OPEN_ENDED,
+    # camera
+    "list_cameras": READ_ONLY,
+    "take_photo": READ_ONLY,
+    "save_photo": REPLACING,
+    "record_video": REPLACING,
     # clipboard
     "get_clipboard": READ_ONLY,
     "get_clipboard_image": READ_ONLY,
@@ -109,6 +114,8 @@ ANNOTATIONS = {
     # document
     "read_document_text": READ_ONLY_ONLINE,
     "convert_document": OPEN_ENDED,
+    # events
+    "wait_for_event": READ_ONLY,
     # finder
     "get_finder_info": READ_ONLY_ONLINE,
     "get_file_thumbnail": READ_ONLY,
@@ -130,6 +137,8 @@ ANNOTATIONS = {
     "restart_finder": REPLACING,
     "move_to_trash": DESTRUCTIVE,
     "extract_zip": DESTRUCTIVE,
+    # hotkeys
+    "wait_for_shortcut": READ_ONLY,
     # image
     "get_image_info": READ_ONLY,
     "get_image_metadata": READ_ONLY,
@@ -380,6 +389,20 @@ ANNOTATIONS = {
     "get_volume": READ_ONLY,
     "set_volume": REPLACING,
     "set_muted": REPLACING,
+    # windows
+    "list_windows": READ_ONLY,
+    "get_front_window": READ_ONLY,
+    "wait_for_window": READ_ONLY,
+    "get_window_settings": READ_ONLY,
+    "take_window_screenshot": READ_ONLY,
+    "save_window_screenshot": REPLACING,
+    "focus_window": ADDITIVE,
+    "move_window": REPLACING,
+    "snap_window": REPLACING,
+    "set_window_state": DESTRUCTIVE,
+    "tile_windows": REPLACING,
+    "set_window_settings": REPLACING,
+    "close_window": DESTRUCTIVE,
 }
 
 TOOLS = set(ANNOTATIONS)

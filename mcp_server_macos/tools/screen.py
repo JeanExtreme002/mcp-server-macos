@@ -242,22 +242,34 @@ def take_screenshot(
         capture: Dict[str, Any] = {"display": display or 1}
     else:
         capture = {"region": where}
+    return on_screen(look(lambda path: macos.screen.screenshot(path, cursor=cursor, **capture)), where)
+
+
+def look(take: Callable[[pathlib.Path], pathlib.Path]) -> Tuple[Image, int, int]:
+    """
+    A picture for the model to see, with its width and height in pixels: ``take(path)`` saves it as a PNG
+    in a temporary folder, and it's sent as a JPEG, scaled down to :data:`_LARGEST_SIDE` when larger.
+    """
     with tempfile.TemporaryDirectory(prefix="mcp-server-macos-") as folder:
-        taken = macos.screen.screenshot(pathlib.Path(folder) / "screen.png", cursor=cursor, **capture)
+        taken = take(pathlib.Path(folder) / "picture.png")
         info = macos.image.info(taken)
         width, height = info.width, info.height
         if max(width, height) > _LARGEST_SIDE:
             scale = _LARGEST_SIDE / max(width, height)
             width, height = max(1, round(width * scale)), max(1, round(height * scale))
-            taken = macos.image.resize(taken, pathlib.Path(folder) / "screen.jpg", width=width, height=height)
+            taken = macos.image.resize(taken, pathlib.Path(folder) / "picture.jpg", width=width, height=height)
         else:
-            taken = macos.image.convert(taken, pathlib.Path(folder) / "screen.jpg")
+            taken = macos.image.convert(taken, pathlib.Path(folder) / "picture.jpg")
         # The size of what's sent, as resize fits the picture within those bounds by its own rounding:
         # a pixel off would shift the points worked out from the picture.
         sent = macos.image.info(taken)
-        width, height = sent.width, sent.height
-        image = Image(data=taken.read_bytes(), format="jpeg")
-    x, y, points_wide, points_high = where
+        return Image(data=taken.read_bytes(), format="jpeg"), sent.width, sent.height
+
+
+def on_screen(seen: Tuple[Image, int, int], where: Tuple[float, float, float, float]) -> List[Union[Image, str]]:
+    """A picture of ``where`` on the screen (x, y, width, height in points), and how its pixels map to points."""
+    image, width, height = seen
+    x, y, points_wide, points_high = (round(value) for value in where)
     return [
         image,
         "The image is {}×{} pixels and shows the screen from ({}, {}), {}×{} points: the pixel (px, py) is the "
