@@ -37,13 +37,15 @@ async def test_cameras_are_listed(client: Client) -> None:
 
 
 async def test_a_shortcut_nobody_presses(client: Client) -> None:
-    result = await client.call_tool("wait_for_shortcut", {"keys": "ctrl+option+shift+f13", "timeout_seconds": 0.3})
-    if result.is_error:
-        # Listening needs Input Monitoring and Accessibility, which a build machine may not grant.
-        assert "Input Monitoring" in text(result), text(result)
-        pytest.skip("Input Monitoring isn't granted here")
+    # Listening needs Input Monitoring and Accessibility, which a build machine may not grant: checked
+    # first, since a tool missing them asks macOS to prompt the user.
+    status = await call(client, "get_keyboard_status")
+    if not (status["input_monitoring_permission"] and status["accessibility_permission"]):
+        pytest.skip("Input Monitoring or Accessibility isn't granted here")
 
-    assert result.structured_content == {"pressed": False}
+    result = await client.call_tool("wait_for_shortcut", {"keys": "ctrl+option+shift+f13", "timeout_seconds": 0.3})
+
+    assert result.structured_content == {"pressed": False}, text(result)
 
 
 async def test_an_event_is_waited_for_in_a_process_of_its_own(client: Client) -> None:

@@ -10,6 +10,7 @@ import macos
 import pytest
 from mcp import Client
 
+from mcp_server_macos import _elsewhere
 from mcp_server_macos.tools import events
 from tests.helpers import text
 
@@ -31,21 +32,39 @@ def answering(monkeypatch: pytest.MonkeyPatch, calls: List[Any], **done: Any) ->
 @pytest.mark.parametrize("found", [{"name": "app_quit", "app": SAFARI, "path": None, "device": None}, None])
 async def test_wait_for_event(client: Client, monkeypatch: pytest.MonkeyPatch, found: Any) -> None:
     calls: List[Any] = []
-    answering(monkeypatch, calls, stdout="a warning on stdout\n" + json.dumps(found) + "\n")
+    answering(monkeypatch, calls, stdout="a warning on stdout\n" + json.dumps({"result": found}) + "\n")
 
     result = await client.call_tool("wait_for_event", {"name": "app_quit", "timeout_seconds": 5})
 
     assert result.structured_content == {"event": found}
     # A process of its own listens on its own main thread, for as long as asked and a moment to start.
     ((command, options),) = calls
-    assert command[0] == sys.executable and command[-2:] == ["app_quit", "5.0"]
-    assert options["timeout"] == 5.0 + events._STARTING
+    assert command[0] == sys.executable
+    assert command[-2:] == ["mcp_server_macos.tools.events:_wait_here", '["app_quit", 5.0]']
+    assert options["timeout"] == 5.0 + _elsewhere.STARTING
 
 
 @pytest.mark.parametrize(
     "done, said",
     [
-        ({"code": 1, "stderr": "Traceback...\nmacos.MacOSError: no run loop"}, "macos.MacOSError: no run loop"),
+        ({"code": 1, "stderr": "Traceback...\nSystemError: Python crashed"}, "SystemError: Python crashed"),
+        (
+            {
+                "stdout": json.dumps(
+                    {
+                        "error": {
+                            "kind": "MacOSError",
+                            "message": "no run loop",
+                            "denied": False,
+                            "ValueError": False,
+                            "OSError": False,
+                            "LookupError": False,
+                        }
+                    }
+                )
+            },
+            "MacOSError: no run loop",
+        ),
         ({"error": subprocess.TimeoutExpired("python", 35)}, "didn't end in time"),
     ],
 )

@@ -6,7 +6,7 @@ import macos
 from mcp.server.mcpserver import Image, MCPServer
 from pydantic import BaseModel, Field
 
-from .. import _permissions
+from .. import _elsewhere, _permissions
 from .._permissions import CAMERA, MICROPHONE
 from .._registry import LONGEST_WAIT, READ_ONLY, REPLACING, add_tool
 from .screen import Saved, look
@@ -80,13 +80,22 @@ def record_video(
         # The tool needs the camera, and the microphone only with sound: asked for here, with its own
         # instructions, rather than as the camera when it's the one missing.
         _permissions.require(MICROPHONE, macos.audio.has_permission)
-    return Saved(path=str(macos.camera.record(path, seconds, camera=camera, audio=audio)))
+    # The camera records on the main thread, which is the server's: it would answer nothing else for
+    # as long as the video lasts. A process of its own records on its own main thread instead.
+    saved = _elsewhere.call("mcp_server_macos.tools.camera:_record_here", [path, seconds, camera, audio], lasts=seconds)
+    return Saved(path=saved)
+
+
+def _record_here(path: str, seconds: float, camera: Optional[str], audio: bool) -> str:
+    """Record on this process's main thread, as the camera needs: run by the process record_video starts."""
+    return str(macos.camera.record(path, seconds, camera=camera, audio=audio))
 
 
 def register(server: MCPServer) -> None:
     add_tool(server, list_cameras, title="List the cameras", annotations=READ_ONLY)
-    # A photo looked at is only read: nothing is kept.
-    add_tool(server, take_photo, title="Take a photo", annotations=READ_ONLY, permission=CAMERA)
+    # The camera takes photos on the main thread, as macOS needs: a second or two. A photo looked at is
+    # only read: nothing is kept.
+    add_tool(server, take_photo, title="Take a photo", annotations=READ_ONLY, permission=CAMERA, main_thread=True)
     # These write a file made from scratch: done again, they write a new one in its place.
-    add_tool(server, save_photo, title="Save a photo", annotations=REPLACING, permission=CAMERA)
+    add_tool(server, save_photo, title="Save a photo", annotations=REPLACING, permission=CAMERA, main_thread=True)
     add_tool(server, record_video, title="Record a video", annotations=REPLACING, permission=CAMERA)

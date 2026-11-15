@@ -1,7 +1,9 @@
 """The tools of mcp_server_macos.tools.camera, with macos.camera faked: the camera doesn't turn on."""
 
+import importlib
+import threading
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import macos
 import pytest
@@ -9,10 +11,25 @@ from mcp import Client
 from mcp.server.mcpserver import Image
 from mcp.types import ImageContent
 
+from mcp_server_macos import _elsewhere
 from mcp_server_macos.tools import camera
 from tests.helpers import Recorder, text
 
 pytestmark = pytest.mark.anyio
+
+
+@pytest.fixture(autouse=True)
+def here(monkeypatch: pytest.MonkeyPatch) -> List[Any]:
+    """A video is recorded in a process of its own: here, in this one, where pymacos is faked."""
+    called: List[Any] = []
+
+    def call(function: str, args: List[Any], *, lasts: float) -> Any:
+        called.append((function, args, lasts))
+        module, _, name = function.partition(":")
+        return getattr(importlib.import_module(module), name)(*args)
+
+    monkeypatch.setattr(_elsewhere, "call", call)
+    return called
 
 
 async def test_list_cameras(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -94,6 +111,27 @@ async def test_a_video_with_sound_asks_for_the_microphone(client: Client, monkey
     assert asked.names == ["microphone"]
     assert "System Settings › Privacy & Security › Microphone" in text(result)
     assert "› Camera" not in text(result)
+
+
+async def test_photos_are_taken_on_the_main_thread_and_videos_in_a_process_of_their_own(
+    client: Client, monkeypatch: pytest.MonkeyPatch, here: List[Any]
+) -> None:
+    # The camera works on the main thread only. A photo takes a second there; a video, which may last
+    # minutes, is recorded on the main thread of a process of its own, so the server keeps answering.
+    threads: List[Any] = []
+
+    def photo(path: str, camera: Any) -> Path:
+        threads.append(threading.current_thread())
+        return Path(path)
+
+    monkeypatch.setattr(macos.camera, "photo", photo)
+    monkeypatch.setattr(macos.camera, "record", lambda path, seconds, camera, audio: Path(path))
+
+    await client.call_tool("save_photo", {"path": "me.jpg"})
+    await client.call_tool("record_video", {"path": "clip.mov", "seconds": 90})
+
+    assert threads == [threading.main_thread()]
+    assert here == [("mcp_server_macos.tools.camera:_record_here", ["clip.mov", 90.0, None, False], 90.0)]
 
 
 async def test_without_the_permission_it_is_asked_for(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:

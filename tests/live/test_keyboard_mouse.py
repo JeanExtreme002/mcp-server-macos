@@ -34,11 +34,13 @@ async def test_mouse_is_read(client: Client) -> None:
 
 @pytest.mark.parametrize("tool", ["wait_for_key_press", "wait_for_click"])
 async def test_waiting_ends_in_a_moment(client: Client, tool: str) -> None:
-    result = await client.call_tool(tool, {"timeout_seconds": 0.3})
-    if result.is_error:
-        # Listening needs Input Monitoring, which a build machine may not grant: the error says so.
-        assert "Input Monitoring" in text(result), text(result)
+    # Listening needs Input Monitoring, which a build machine may not grant: checked first, since a tool
+    # missing it asks macOS to prompt the user.
+    if not (await call(client, "get_keyboard_status"))["input_monitoring_permission"]:
         pytest.skip("Input Monitoring isn't granted here")
+
+    result = await client.call_tool(tool, {"timeout_seconds": 0.3})
+    assert not result.is_error, text(result)
 
     # Nothing is asked of the user, but a key pressed or a click made meanwhile is a right answer too.
     name, event = result.structured_content.popitem() if result.structured_content else (None, None)

@@ -190,14 +190,27 @@ async def test_take_window_screenshot(client: Client, mac: Recorder, monkeypatch
 
     monkeypatch.setattr(windows, "look", look)
 
-    result = await client.call_tool("take_window_screenshot", {"shadow": True})
+    result = await client.call_tool("take_window_screenshot", {})
 
     image, said = result.content
     assert isinstance(image, ImageContent)
     assert getattr(said, "text").startswith(
         "The image is 1600×1200 pixels and shows the screen from (0, 25), 800×600 points"
     )
-    assert mac.calls == [("screenshot", ("/tmp/picture.png",), {"shadow": True})]
+    assert mac.calls == [("screenshot", ("/tmp/picture.png",), {"shadow": False})]
+
+
+async def test_a_window_screenshot_with_its_shadow_maps_no_points(
+    client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # The shadow pads the picture beyond the frame: its pixels don't map onto it, so no map is given.
+    monkeypatch.setattr(windows, "look", lambda take: (Image(data=b"jpeg", format="jpeg"), 1700, 1350))
+
+    result = await client.call_tool("take_window_screenshot", {"shadow": True})
+
+    said = getattr(result.content[1], "text")
+    assert "with the window's shadow around it: its pixels don't map to points" in said
+    assert "px ×" not in said
 
 
 async def test_save_window_screenshot(client: Client, mac: Recorder) -> None:

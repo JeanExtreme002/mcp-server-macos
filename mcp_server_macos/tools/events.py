@@ -1,14 +1,12 @@
 """Tools for what happens on the Mac: sleep and wake, the screen locking, apps opening and quitting..., from ``macos.events``."""
 
-import json
-import subprocess
-import sys
 from typing import Annotated, Any, Dict, Literal, Optional
 
 import macos
 from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
+from .. import _elsewhere
 from .._registry import LONGEST_WAIT, READ_ONLY, add_tool
 
 EventName = Literal[
@@ -33,9 +31,6 @@ EventName = Literal[
     "usb_disconnected",
     "displays_changed",
 ]
-
-# The time a process of Python takes to start and to be listening, past the wait itself.
-_STARTING = 30.0
 
 
 class EventApp(BaseModel):
@@ -100,23 +95,7 @@ def wait_for_event(
     """
     # macOS delivers these events to the main thread, which is the server's: it would answer nothing else
     # meanwhile. A process of its own waits on its own main thread instead, and says what happened.
-    script = (
-        "import json, sys; from mcp_server_macos.tools.events import _wait_here; "
-        "print(json.dumps(_wait_here(sys.argv[1], float(sys.argv[2]))))"
-    )
-    try:
-        done = subprocess.run(
-            [sys.executable, "-c", script, name, repr(timeout_seconds)],
-            capture_output=True,
-            text=True,
-            timeout=timeout_seconds + _STARTING,
-        )
-    except subprocess.TimeoutExpired:
-        raise macos.MacOSError("listening for {} didn't end in time".format(name)) from None
-    if done.returncode != 0:
-        lines = done.stderr.strip().splitlines()
-        raise macos.MacOSError("listening for {} failed: {}".format(name, lines[-1] if lines else done.returncode))
-    found = json.loads(done.stdout.strip().splitlines()[-1])
+    found = _elsewhere.call("mcp_server_macos.tools.events:_wait_here", [name, timeout_seconds], lasts=timeout_seconds)
     return EventWait(event=None if found is None else Event.model_validate(found))
 
 

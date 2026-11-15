@@ -249,8 +249,17 @@ def take_window_screenshot(
     that click and move_pointer take.
     """
     window = _window(app, title)
-    where = window.frame
-    return on_screen(look(lambda path: window.screenshot(path, shadow=shadow)), where)
+    seen = look(lambda path: window.screenshot(path, shadow=shadow))
+    if shadow:
+        # The shadow pads the picture beyond the window's frame, by more below than above: its pixels
+        # don't map onto the frame, so no map is given rather than a wrong one.
+        image, width, height = seen
+        return [
+            image,
+            "The image is {}×{} pixels, with the window's shadow around it: its pixels don't map to points. "
+            "Take it without the shadow to work out where to click.".format(width, height),
+        ]
+    return on_screen(seen, window.frame)
 
 
 def save_window_screenshot(
