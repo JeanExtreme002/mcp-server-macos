@@ -96,6 +96,14 @@ def capture(monkeypatch: pytest.MonkeyPatch) -> Recorder:
     def scaled(name: str) -> Any:
         def call(source: Any, output: Any, **options: Any) -> pathlib.Path:
             recorder.calls.append((name, (), options))
+            width, height = sizes[str(source)]
+            if name == "resize":
+                # As pymacos does: the picture fits within the bounds, its longest side rounded at that scale.
+                scale = min(options["width"] / width, options["height"] / height, 1.0)
+                longest = max(1, round(max(width, height) * scale))
+                ratio = longest / max(width, height)
+                width, height = (longest, round(height * ratio)) if width >= height else (round(width * ratio), longest)
+            sizes[str(output)] = (width, height)
             pathlib.Path(output).write_bytes(b"jpeg of " + pathlib.Path(source).name.encode())
             return pathlib.Path(output)
 
@@ -120,8 +128,9 @@ async def test_a_whole_screenshot_is_scaled_down_and_says_how_to_click_it(client
         ("screenshot", (), {"cursor": False, "display": 1}),
         ("resize", (), {"width": 1568, "height": 1018}),
     ]
-    assert said.text.startswith("The image is 1568×1018 pixels and shows the screen from (0, 0), 1512×982 points")
-    assert "(0 + px × 0.9643, 0 + py × 0.9646)" in said.text
+    # The size of the picture sent: resize's own rounding makes it 1567 wide, not the 1568 asked for.
+    assert said.text.startswith("The image is 1567×1018 pixels and shows the screen from (0, 0), 1512×982 points")
+    assert "(0 + px × 0.9649, 0 + py × 0.9646)" in said.text
 
 
 async def test_a_screenshot_of_a_region_or_of_another_display(client: Client, capture: Recorder) -> None:
@@ -174,6 +183,7 @@ async def test_screen_files(
     client: Client, monkeypatch: pytest.MonkeyPatch, tool: str, arguments: Any, call: Any
 ) -> None:
     recorder = Recorder()
+    monkeypatch.setattr(macos.screen, "displays", lambda: [BUILT_IN, EXTERNAL])
     monkeypatch.setattr(macos.screen, call[0], recorder.function(call[0], pathlib.Path(call[1][0])))
 
     result = await client.call_tool(tool, arguments)
@@ -182,8 +192,27 @@ async def test_screen_files(
     assert recorder.calls == [call]
 
 
+async def test_a_recording_with_sound_asks_for_the_microphone(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Screen Recording is the tool's, the microphone only with sound: when that's the one missing, it's
+    # the one asked for and told of, and nothing is recorded.
+    asked = Recorder()
+    monkeypatch.setattr(macos.screen, "displays", lambda: [BUILT_IN])
+    monkeypatch.setattr(macos.screen, "record", asked.function("record"))
+    monkeypatch.setattr(macos.screen, "request_permission", asked.function("screen", True))
+    monkeypatch.setattr(macos.audio, "has_permission", lambda: False)
+    monkeypatch.setattr(macos.audio, "request_permission", asked.function("microphone", False))
+
+    result = await client.call_tool("record_screen", {"path": "a.mov", "seconds": 3, "audio": True})
+
+    assert result.is_error
+    assert asked.names == ["microphone"]
+    assert "System Settings › Privacy & Security › Microphone" in text(result)
+    assert "Screen & System Audio Recording" not in text(result)
+
+
 async def test_find_text_on_screen(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
     recorder = Recorder()
+    monkeypatch.setattr(macos.screen, "displays", lambda: [BUILT_IN])
     found = [macos.screen.TextMatch(text="Submit", x=100, y=200, width=60, height=21)]
     monkeypatch.setattr(macos.screen, "find_text", recorder.function("find_text", found))
 
@@ -434,6 +463,15 @@ def test_screenshots_sent_are_no_larger_than_the_model_reads() -> None:
         ("set_screenshot_settings", {"format": "webp"}),
         ("record_screen", {"path": "a.mov", "seconds": 0}),
         ("find_text_on_screen", {"text": ""}),
+        # A display that isn't connected is refused before anything is asked of macOS.
+        ("save_screenshot", {"path": "a.png", "display": 3}),
+        ("record_screen", {"path": "a.mov", "seconds": 1, "display": 3, "audio": True}),
+        ("find_text_on_screen", {"text": "Submit", "display": 3}),
+        ("wait_for_text_on_screen", {"text": "Submit", "display": 3}),
+        # As pymacos refuses it, before any other setting is written: a name with / or :, or of spaces.
+        ("set_screenshot_settings", {"format": "jpg", "name": "bad/name"}),
+        ("set_screenshot_settings", {"format": "jpg", "name": "a:b"}),
+        ("set_screenshot_settings", {"format": "jpg", "name": "   "}),
     ],
 )
 async def test_screen_is_not_touched_without_what_it_needs(
@@ -445,6 +483,10 @@ async def test_screen_is_not_touched_without_what_it_needs(
     arguments: Dict[str, Any],
 ) -> None:
     monkeypatch.setattr(macos.screen, "record", mac.function("record"))
+    monkeypatch.setattr(macos.screen, "screenshot", mac.function("screenshot"))
+    monkeypatch.setattr(macos.screen, "request_permission", mac.function("request_permission"))
+    monkeypatch.setattr(macos.audio, "has_permission", mac.function("has_permission"))
+    monkeypatch.setattr(macos.audio, "request_permission", mac.function("request_permission"))
 
     result = await client.call_tool(tool, arguments)
 

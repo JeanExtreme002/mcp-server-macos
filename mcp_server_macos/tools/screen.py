@@ -11,8 +11,9 @@ import macos
 from mcp.server.mcpserver import Image, MCPServer
 from pydantic import BaseModel, Field
 
-from .._permissions import SCREEN_RECORDING
-from .._registry import LONGEST_WAIT, READ_ONLY, REPLACING, add_tool
+from .. import _permissions
+from .._permissions import MICROPHONE, SCREEN_RECORDING
+from .._registry import DESTRUCTIVE, LONGEST_WAIT, READ_ONLY, REPLACING, add_tool
 
 T = TypeVar("T")
 
@@ -186,6 +187,17 @@ def _display(number: int) -> Any:
     return displays[number - 1]
 
 
+def _where(region: Optional[Region], display: Optional[int]) -> Dict[str, Any]:
+    """
+    Where to capture, as pymacos's screenshot, recording and reading take it: the region, or the display's
+    number, checked to be connected before anything is asked of macOS (a permission, a capture).
+    """
+    if region is not None:
+        return {"region": (region.x, region.y, region.width, region.height)}
+    _display(display or 1)
+    return {"display": display or 1}
+
+
 def _region(region: Optional[Region]) -> Optional[Tuple[int, int, int, int]]:
     return None if region is None else (region.x, region.y, region.width, region.height)
 
@@ -240,6 +252,10 @@ def take_screenshot(
             taken = macos.image.resize(taken, pathlib.Path(folder) / "screen.jpg", width=width, height=height)
         else:
             taken = macos.image.convert(taken, pathlib.Path(folder) / "screen.jpg")
+        # The size of what's sent, as resize fits the picture within those bounds by its own rounding:
+        # a pixel off would shift the points worked out from the picture.
+        sent = macos.image.info(taken)
+        width, height = sent.width, sent.height
         image = Image(data=taken.read_bytes(), format="jpeg")
     x, y, points_wide, points_high = where
     return [
@@ -265,7 +281,7 @@ def save_screenshot(
     cursor: Annotated[bool, Field(description="True to show the mouse pointer.")] = False,
 ) -> Saved:
     """Save a screenshot of a display, or of part of it, to a file, with every pixel."""
-    capture: Dict[str, Any] = {"region": _region(region)} if region is not None else {"display": display or 1}
+    capture: Dict[str, Any] = _where(region, display)
     return Saved(path=str(macos.screen.screenshot(path, cursor=cursor, **capture)))
 
 
@@ -280,7 +296,11 @@ def record_screen(
     clicks: Annotated[bool, Field(description="True to show the mouse clicks.")] = False,
 ) -> Saved:
     """Record the screen, or part of it, into a video. It returns when the recording ends."""
-    capture: Dict[str, Any] = {"region": _region(region)} if region is not None else {"display": display or 1}
+    capture: Dict[str, Any] = _where(region, display)
+    if audio:
+        # The tool needs Screen Recording, and the microphone only with sound: asked for here, with its
+        # own instructions, rather than as Screen Recording when it's the one missing.
+        _permissions.require(MICROPHONE, macos.audio.has_permission)
     return Saved(path=str(macos.screen.record(path, seconds, audio=audio, clicks=clicks, **capture)))
 
 
@@ -294,7 +314,7 @@ def find_text_on_screen(
     Find a text on the screen, in any app and in images too, read as Live Text reads it: where each
     match is, from the top. Empty when it isn't there.
     """
-    where: Dict[str, Any] = {"region": _region(region)} if region is not None else {"display": display or 1}
+    where: Dict[str, Any] = _where(region, display)
     return [_found(match) for match in macos.screen.find_text(text, languages=languages, **where)]
 
 
@@ -306,7 +326,7 @@ def wait_for_text_on_screen(
     languages: Languages = None,
 ) -> TextWait:
     """Wait for a text to show up on the screen: a page loaded, a message received, a task done."""
-    where: Dict[str, Any] = {"region": _region(region)} if region is not None else {"display": display or 1}
+    where: Dict[str, Any] = _where(region, display)
     match = macos.screen.wait_for_text(text, timeout=timeout_seconds, languages=languages, **where)
     return TextWait(found=None if match is None else _found(match))
 
@@ -512,7 +532,13 @@ def set_screenshot_settings(
         Optional[bool], Field(description="False to save at once, without the thumbnail in the corner.")
     ] = None,
     name: Annotated[
-        Optional[str], Field(description="Start the files' names with this, such as 'Capture'. '' for macOS's own.")
+        Optional[str],
+        Field(
+            description="Start the files' names with this, such as 'Capture', without / or :. '' for macOS's own.",
+            # As pymacos takes it ('' aside, which is macOS's own name): checked here, before any setting
+            # is written, as nothing is written back when one is refused.
+            pattern=r"^(?:|[^/:]*[^/:\s][^/:]*)$",
+        ),
     ] = None,
     target: Annotated[
         Optional[ScreenshotTarget],
@@ -574,7 +600,6 @@ def register(server: MCPServer) -> None:
     # things as they were once the user is back, as turning the display off does.
     for setter, title in (
         (set_display_mode, "Change a display's resolution"),
-        (set_main_display, "Choose the main display"),
         (mirror_display, "Mirror a display"),
         (stop_mirroring, "Stop mirroring displays"),
         (set_display_brightness, "Set a display's brightness"),
@@ -585,3 +610,6 @@ def register(server: MCPServer) -> None:
         (lock_screen, "Lock the screen"),
     ):
         add_tool(server, setter, title=title, annotations=REPLACING)
+    # Displays are told by their number, and the main one is number 1: the same call made again makes
+    # the other display the main one, back as it was. Not to retry, then.
+    add_tool(server, set_main_display, title="Choose the main display", annotations=DESTRUCTIVE)

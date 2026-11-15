@@ -268,7 +268,7 @@ ANNOTATIONS = {
     "save_screenshot": REPLACING,
     "record_screen": REPLACING,
     "set_display_mode": REPLACING,
-    "set_main_display": REPLACING,
+    "set_main_display": DESTRUCTIVE,
     "mirror_display": REPLACING,
     "stop_mirroring": REPLACING,
     "set_display_brightness": REPLACING,
