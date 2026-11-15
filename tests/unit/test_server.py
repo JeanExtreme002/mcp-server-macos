@@ -399,7 +399,7 @@ ANNOTATIONS = {
     "focus_window": ADDITIVE,
     "move_window": REPLACING,
     "snap_window": REPLACING,
-    "set_window_state": REPLACING,
+    "set_window_state": DESTRUCTIVE,
     "tile_windows": REPLACING,
     "set_window_settings": REPLACING,
     "close_window": DESTRUCTIVE,

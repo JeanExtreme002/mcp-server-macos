@@ -28,7 +28,8 @@ def call(function: str, args: List[Any], *, lasts: float) -> Any:
 
     ``lasts`` is how long the call may take, in seconds, before the process is let go of. An error it
     raised is raised again here as what it was, as far as the server tells errors apart: a missing
-    permission, an invalid argument, a file, or macOS failing.
+    permission, an invalid argument, a file, or macOS failing. Any other error, a bug, is a
+    :class:`RuntimeError`, which the client isn't told the text of.
     """
     try:
         done = subprocess.run(
@@ -41,16 +42,21 @@ def call(function: str, args: List[Any], *, lasts: float) -> Any:
         raise macos.MacOSError("{} didn't end in time".format(function.rpartition(":")[2])) from None
     lines = done.stdout.strip().splitlines()
     if done.returncode != 0 or not lines:
-        errors = done.stderr.strip().splitlines()
-        raise macos.MacOSError("{} failed: {}".format(function, errors[-1] if errors else done.returncode))
+        # The process ended without a word: what it printed may be anything, so it isn't told to the
+        # client, as an unexpected error of a tool isn't (see translate_errors).
+        raise RuntimeError("{} ended without an answer: {}".format(function, done.stderr.strip()[-2000:]))
     answer = json.loads(lines[-1])  # the last line: a warning may have been printed before it
     if "error" not in answer:
         return answer["result"]
-    kind, message = answer["error"]["kind"], answer["error"]["message"]
-    if answer["error"]["denied"]:
+    error = answer["error"]
+    kind, message = error["kind"], error["message"]
+    if not error["expected"]:
+        # Not an error pymacos raises on purpose: its text may hold anything, and stays on this machine.
+        raise RuntimeError("{} raised {}: {}".format(function, kind, message))
+    if error["denied"]:
         raise macos.PermissionDeniedError(message)
     for family in ("ValueError", "OSError", "LookupError"):
-        if answer["error"][family]:
+        if error[family]:
             raise {"ValueError": ValueError, "OSError": OSError, "LookupError": LookupError}[family](
                 "{}: {}".format(kind, message) if kind != family else message
             )
@@ -65,6 +71,7 @@ def _serve(function: str, args: str) -> None:
     try:
         result = getattr(importlib.import_module(module), name)(*json.loads(args))
     except Exception as error:  # every error is told to the server, which tells them apart
+        looked_up = isinstance(error, LookupError) and not isinstance(error, (KeyError, IndexError))
         print(
             json.dumps(
                 {
@@ -74,7 +81,9 @@ def _serve(function: str, args: str) -> None:
                         "denied": isinstance(error, macos.PermissionDeniedError),
                         "ValueError": isinstance(error, ValueError),
                         "OSError": isinstance(error, OSError),
-                        "LookupError": isinstance(error, LookupError) and not isinstance(error, (KeyError, IndexError)),
+                        "LookupError": looked_up,
+                        # The errors translate_errors tells the client of: the others are bugs.
+                        "expected": isinstance(error, (macos.MacOSError, ValueError, OSError)) or looked_up,
                     }
                 }
             )

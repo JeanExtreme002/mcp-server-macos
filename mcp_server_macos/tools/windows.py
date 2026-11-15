@@ -391,10 +391,18 @@ def register(server: MCPServer) -> None:
     for setter, title in (
         (move_window, "Move or resize a window"),
         (snap_window, "Snap a window"),
-        (set_window_state, "Minimize a window or make it full screen"),
         (tile_windows, "Tile windows"),
     ):
         add_tool(server, setter, title=title, annotations=REPLACING, permission=ACCESSIBILITY)
     add_tool(server, set_window_settings, title="Change the window settings", annotations=REPLACING)
+    # Minimizing the window in front (or an app's front one) puts another in front: the same call made
+    # again minimizes that one too. Not to retry, then.
+    add_tool(
+        server,
+        set_window_state,
+        title="Minimize a window or make it full screen",
+        annotations=DESTRUCTIVE,
+        permission=ACCESSIBILITY,
+    )
     # A closed window may take what's unsaved in it, and a second call closes another window.
     add_tool(server, close_window, title="Close a window", annotations=DESTRUCTIVE, permission=ACCESSIBILITY)

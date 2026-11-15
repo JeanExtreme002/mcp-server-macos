@@ -29,6 +29,8 @@ def here(monkeypatch: pytest.MonkeyPatch) -> List[Any]:
         return getattr(importlib.import_module(module), name)(*args)
 
     monkeypatch.setattr(_elsewhere, "call", call)
+    # A video asks for the camera first, in the server: granted here, unless a test says otherwise.
+    monkeypatch.setattr(macos.camera, "has_permission", lambda: True)
     return called
 
 
@@ -131,7 +133,26 @@ async def test_photos_are_taken_on_the_main_thread_and_videos_in_a_process_of_th
     await client.call_tool("record_video", {"path": "clip.mov", "seconds": 90})
 
     assert threads == [threading.main_thread()]
-    assert here == [("mcp_server_macos.tools.camera:_record_here", ["clip.mov", 90.0, None, False], 90.0)]
+    # As long as pymacos may take: 15 seconds for the camera to start, the video and a second, then 15
+    # seconds and a tenth of the video to finish the movie.
+    assert here == [("mcp_server_macos.tools.camera:_record_here", ["clip.mov", 90.0, None, False], 130.0)]
+
+
+async def test_a_video_asks_for_the_camera_before_it_starts(
+    client: Client, monkeypatch: pytest.MonkeyPatch, here: List[Any]
+) -> None:
+    # The prompt waits for the user, for as long as they take: in the server, not within the time the
+    # recording's process is given.
+    asked = Recorder()
+    monkeypatch.setattr(macos.camera, "has_permission", lambda: False)
+    monkeypatch.setattr(macos.camera, "request_permission", asked.function("request_permission", False))
+
+    result = await client.call_tool("record_video", {"path": "clip.mov", "seconds": 5})
+
+    assert result.is_error
+    assert asked.names == ["request_permission"]
+    assert "System Settings › Privacy & Security › Camera" in text(result)
+    assert here == []
 
 
 async def test_without_the_permission_it_is_asked_for(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:

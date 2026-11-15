@@ -80,10 +80,23 @@ def record_video(
         # The tool needs the camera, and the microphone only with sound: asked for here, with its own
         # instructions, rather than as the camera when it's the one missing.
         _permissions.require(MICROPHONE, macos.audio.has_permission)
+    # Asked for here, in the server, before the recording: the prompt waits for the user, for as long as
+    # they take, which isn't the recording's time.
+    _permissions.require(CAMERA, macos.camera.has_permission)
     # The camera records on the main thread, which is the server's: it would answer nothing else for
     # as long as the video lasts. A process of its own records on its own main thread instead.
-    saved = _elsewhere.call("mcp_server_macos.tools.camera:_record_here", [path, seconds, camera, audio], lasts=seconds)
+    saved = _elsewhere.call(
+        "mcp_server_macos.tools.camera:_record_here", [path, seconds, camera, audio], lasts=_recording_time(seconds)
+    )
     return Saved(path=saved)
+
+
+def _recording_time(seconds: float) -> float:
+    """
+    The longest a recording of ``seconds`` takes, as pymacos waits for it: the camera starting (15
+    seconds at most), the video and a second, then the movie finished (15 seconds, and a tenth of it).
+    """
+    return 15.0 + seconds + 1.0 + 15.0 + seconds / 10
 
 
 def _record_here(path: str, seconds: float, camera: Optional[str], audio: bool) -> str:

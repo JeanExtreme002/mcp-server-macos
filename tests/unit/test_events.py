@@ -47,7 +47,6 @@ async def test_wait_for_event(client: Client, monkeypatch: pytest.MonkeyPatch, f
 @pytest.mark.parametrize(
     "done, said",
     [
-        ({"code": 1, "stderr": "Traceback...\nSystemError: Python crashed"}, "SystemError: Python crashed"),
         (
             {
                 "stdout": json.dumps(
@@ -59,6 +58,7 @@ async def test_wait_for_event(client: Client, monkeypatch: pytest.MonkeyPatch, f
                             "ValueError": False,
                             "OSError": False,
                             "LookupError": False,
+                            "expected": True,
                         }
                     }
                 )
@@ -74,6 +74,40 @@ async def test_a_listening_that_fails(client: Client, monkeypatch: pytest.Monkey
     result = await client.call_tool("wait_for_event", {"name": "wake"})
 
     assert result.is_error and said in text(result)
+
+
+@pytest.mark.parametrize(
+    "done",
+    [
+        {"code": 1, "stderr": "Traceback...\nSystemError: the token abc123 was refused"},
+        {
+            "stdout": json.dumps(
+                {
+                    "error": {
+                        "kind": "RuntimeError",
+                        "message": "the token abc123 was refused",
+                        "denied": False,
+                        "ValueError": False,
+                        "OSError": False,
+                        "LookupError": False,
+                        "expected": False,
+                    }
+                }
+            )
+        },
+    ],
+)
+async def test_what_went_wrong_unexpectedly_stays_on_this_machine(
+    client: Client, monkeypatch: pytest.MonkeyPatch, done: Any
+) -> None:
+    # Not an error pymacos raises on purpose, nor what a crashed process printed: the client is told the
+    # tool failed, not the text, which may hold anything.
+    answering(monkeypatch, [], **done)
+
+    result = await client.call_tool("wait_for_event", {"name": "wake"})
+
+    assert result.is_error
+    assert "abc123" not in text(result)
 
 
 def test_the_listening_process_says_what_happened(monkeypatch: pytest.MonkeyPatch) -> None:

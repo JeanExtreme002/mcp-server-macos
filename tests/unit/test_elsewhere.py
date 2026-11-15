@@ -45,8 +45,6 @@ def test_what_the_function_returns_comes_back() -> None:
         ("file", OSError, "FileNotFoundError: no such file: clip.mov"),
         ("timeout", OSError, "WaitTimeoutError: the camera didn't answer"),
         ("macos", macos.MacOSError, "the recording failed"),
-        # Not one the server tells apart: macOS failing, with what it was.
-        ("bug", macos.MacOSError, "KeyError: 'width'"),
     ],
 )
 def test_what_the_function_raises_is_raised_here(kind: str, raised: type, said: str) -> None:
@@ -54,3 +52,10 @@ def test_what_the_function_raises_is_raised_here(kind: str, raised: type, said: 
         _elsewhere.call(HERE + ":refuse", [kind], lasts=5)
 
     assert str(error.value) == said
+
+
+def test_a_bug_in_the_function_isnt_told_to_the_client() -> None:
+    # Not an error pymacos raises on purpose: a RuntimeError, which translate_errors leaves to the server,
+    # which tells the client only that the tool failed.
+    with pytest.raises(RuntimeError, match="KeyError"):
+        _elsewhere.call(HERE + ":refuse", ["bug"], lasts=5)
