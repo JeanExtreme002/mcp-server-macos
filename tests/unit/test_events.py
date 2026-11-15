@@ -39,7 +39,7 @@ async def test_wait_for_event(client: Client, monkeypatch: pytest.MonkeyPatch, f
     assert result.structured_content == {"event": found}
     # A process of its own listens on its own main thread, for as long as asked and a moment to start.
     ((command, options),) = calls
-    assert command[0] == sys.executable
+    assert command[:2] == [sys.executable, "-I"]  # isolated: the working directory isn't on its path
     assert command[-2:] == ["mcp_server_macos.tools.events:_wait_here", '["app_quit", 5.0]']
     assert options["timeout"] == 5.0 + _elsewhere.STARTING
 

@@ -8,6 +8,8 @@ runs there, and what it returns, or the error it raised, comes back as JSON.
 """
 
 import json
+import os
+import pathlib
 import subprocess
 import sys
 import traceback
@@ -18,7 +20,29 @@ import macos
 #: The time a process of Python takes to start, and to get ready, past what the function itself takes.
 STARTING = 30.0
 
-_SCRIPT = "import sys; from mcp_server_macos._elsewhere import _serve; _serve(sys.argv[1], sys.argv[2])"
+# Run isolated (-I): Python puts neither the working directory nor PYTHONPATH on the path, where a
+# folder the server was started in could hold a macos.py or a mcp_server_macos of its own, run with the
+# server's permissions. The path the server imports from is given instead, ahead of the rest.
+_SCRIPT = (
+    "import json, sys; sys.path[:0] = json.loads(sys.argv[1]); "
+    "from mcp_server_macos._elsewhere import _serve; _serve(sys.argv[2], sys.argv[3])"
+)
+
+
+def _trusted_path() -> List[str]:
+    """
+    Where the process imports from: where the server's packages are, then the server's own path, but for
+    the working directory, which isn't the server's to trust (see :data:`_SCRIPT`). An editable or a
+    per-user install is found there, as the server found it.
+    """
+    import mcp_server_macos
+
+    working = os.path.realpath(os.getcwd())
+    packages = [
+        str(pathlib.Path(module.__file__ or "").resolve().parent.parent) for module in (mcp_server_macos, macos)
+    ]
+    rest = [entry for entry in sys.path if entry and os.path.realpath(entry) != working]
+    return list(dict.fromkeys(packages + rest))
 
 
 def call(function: str, args: List[Any], *, lasts: float) -> Any:
@@ -33,7 +57,7 @@ def call(function: str, args: List[Any], *, lasts: float) -> Any:
     """
     try:
         done = subprocess.run(
-            [sys.executable, "-c", _SCRIPT, function, json.dumps(args)],
+            [sys.executable, "-I", "-c", _SCRIPT, json.dumps(_trusted_path()), function, json.dumps(args)],
             capture_output=True,
             text=True,
             timeout=lasts + STARTING,
