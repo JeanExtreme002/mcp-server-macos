@@ -124,7 +124,7 @@ ANNOTATIONS = {
     "remove_file_tags": REPLACING,
     "set_file_icon": REPLACING,
     "remove_file_icon": REPLACING,
-    "compress_to_zip": REPLACING,
+    "compress_to_zip": DESTRUCTIVE,
     "set_finder_settings": REPLACING,
     "set_desktop_view": REPLACING,
     "restart_finder": REPLACING,

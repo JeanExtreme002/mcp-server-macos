@@ -387,7 +387,10 @@ def set_finder_settings(
     Change Finder's settings. Give only the settings to change: the others stay as they are. Finder
     relaunches once, at the end. The desktop's view has its own tool, set_desktop_view.
     """
+    # The folder goes first: it's the one setting that can be refused (a folder that isn't there), and
+    # nothing is written back when one is, so it must be refused before any other setting is changed.
     setters: Tuple[Tuple[Any, Callable[[Any], Any], str], ...] = (
+        (new_window_folder, macos.finder.set_new_window_folder, "new window folder"),
         (show_hidden_files, macos.finder.set_show_hidden_files, "hidden files"),
         (show_extensions, macos.finder.set_show_extensions, "extensions"),
         (show_path_bar, macos.finder.set_show_path_bar, "path bar"),
@@ -396,7 +399,6 @@ def set_finder_settings(
         (show_library_folder, macos.finder.set_show_library_folder, "Library folder"),
         (show_full_path_in_title, macos.finder.set_show_full_path_in_title, "full path in title"),
         (default_view, macos.finder.set_default_view, "default view"),
-        (new_window_folder, macos.finder.set_new_window_folder, "new window folder"),
         (search_scope, macos.finder.set_search_scope, "search scope"),
         (folders_first, macos.finder.set_folders_first, "folders first"),
         (extension_change_warning, macos.finder.set_extension_change_warning, "extension warning"),
@@ -489,12 +491,13 @@ def register(server: MCPServer) -> None:
         (remove_file_tags, "Remove tags from a file"),
         (set_file_icon, "Set a custom icon"),
         (remove_file_icon, "Remove a custom icon"),
-        (compress_to_zip, "Zip a file or a folder"),
         (set_finder_settings, "Change Finder's settings"),
         (set_desktop_view, "Change the desktop's view"),
         (restart_finder, "Relaunch Finder"),
     ):
         add_tool(server, setter, title=title, annotations=REPLACING)
-    # These take a file away, or may write over files: done again, they fail or write over again.
+    # These take a file away, or may write over files: done again, they fail or write over again. Zipping
+    # may be told to write over the .zip it zips, which a second call wraps in another ZIP.
+    add_tool(server, compress_to_zip, title="Zip a file or a folder", annotations=DESTRUCTIVE)
     add_tool(server, move_to_trash, title="Move to the Trash", annotations=DESTRUCTIVE)
     add_tool(server, extract_zip, title="Unzip an archive", annotations=DESTRUCTIVE)

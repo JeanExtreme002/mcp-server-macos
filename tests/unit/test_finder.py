@@ -314,6 +314,29 @@ async def test_set_finder_settings_relaunches_finder_once(
     ]
 
 
+async def test_a_missing_new_window_folder_changes_no_other_setting(
+    client: Client, monkeypatch: pytest.MonkeyPatch, batches: List[str]
+) -> None:
+    recorder = Recorder()
+    for name in macos.finder.__all__:
+        if name.startswith("set_"):
+            monkeypatch.setattr(macos.finder, name, recorder.function(name))
+    monkeypatch.setattr(
+        macos.finder,
+        "set_new_window_folder",
+        recorder.function("set_new_window_folder", error=FileNotFoundError("no such folder: ~/Nowhere")),
+    )
+
+    result = await client.call_tool(
+        "set_finder_settings", {"show_hidden_files": True, "new_window_folder": "~/Nowhere", "quit_menu": True}
+    )
+
+    assert result.is_error
+    assert "no such folder" in text(result)
+    # Nothing is written back once a setting is refused, so none was changed before it.
+    assert recorder.names == ["set_new_window_folder"]
+
+
 async def test_every_finder_setter_is_offered(client: Client) -> None:
     # Each setting of macos.finder is offered by set_finder_settings, but the desktop's view, which has its own tool.
     (tool,) = [tool for tool in (await client.list_tools()).tools if tool.name == "set_finder_settings"]
