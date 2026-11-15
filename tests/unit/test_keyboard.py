@@ -1,6 +1,7 @@
 """The tools of mcp_server_macos.tools.keyboard, with macos.keyboard faked: no key is pressed, no setting changed."""
 
 import contextlib
+import itertools
 import threading
 import time
 from typing import Any, Dict, Iterator, List
@@ -231,6 +232,31 @@ async def test_the_layout_is_read_on_the_main_thread_first(
     assert [what for what, _ in threads] == ["layout", name]
     assert threads[0][1] is threading.main_thread()
     assert threads[1][1] is not threading.main_thread()
+
+
+async def test_keys_and_text_are_sent_in_turn(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    # As pymacos does with an interval: a key at a time. Calls at once must not mix their keys.
+    sent: List[str] = []
+
+    def type(text: str, **options: Any) -> None:
+        for char in text:
+            sent.append(char)
+            time.sleep(0.02)
+
+    def press(keys: str, **options: Any) -> None:
+        time.sleep(0.01)
+        sent.append(keys)
+
+    monkeypatch.setattr(macos.keyboard, "type", type)
+    monkeypatch.setattr(macos.keyboard, "press", press)
+
+    async with anyio.create_task_group() as group:
+        group.start_soon(client.call_tool, "type_text", {"text": "AB", "interval_seconds": 0.02})
+        group.start_soon(client.call_tool, "type_text", {"text": "12", "interval_seconds": 0.02})
+        group.start_soon(client.call_tool, "press_keys", {"keys": "enter"})
+
+    # Each call whole, in whichever order they came.
+    assert "".join(sent) in {"".join(order) for order in itertools.permutations(["AB", "12", "enter"])}
 
 
 async def test_lists_saved_whole_are_changed_in_turn(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:

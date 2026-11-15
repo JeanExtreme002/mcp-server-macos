@@ -44,6 +44,11 @@ SystemShortcut = Literal[
 # list without the other's. They take turns, across every server of the process, as the Mac is one.
 _SAVED = threading.Lock()
 
+# The keys pressed and the text typed go to the one app in front, a key at a time: two calls at once
+# would mix their keys ("A12B" for "AB" and "12"), or press a shortcut in the middle of a text. They
+# take turns too.
+_TYPING = threading.Lock()
+
 
 def _read_layout_on_main_thread() -> None:
     """
@@ -159,7 +164,8 @@ def press_keys(
     in front first.
     """
     _read_layout_on_main_thread()
-    macos.keyboard.press(keys, times=times)
+    with _TYPING:
+        macos.keyboard.press(keys, times=times)
     return "Pressed {}{}.".format(keys, "" if times == 1 else " {} times".format(times))
 
 
@@ -176,7 +182,8 @@ def type_text(
     presses Tab: in a chat box or a form, a new line sends or submits, so leave them out of text taken
     from elsewhere (a web page, a message).
     """
-    macos.keyboard.type(text, interval=interval_seconds)
+    with _TYPING:
+        macos.keyboard.type(text, interval=interval_seconds)
     return "Typed {} character{}.".format(len(text), "" if len(text) == 1 else "s")
 
 

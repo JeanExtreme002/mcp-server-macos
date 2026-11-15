@@ -33,11 +33,15 @@ async def test_mouse_is_read(client: Client) -> None:
 
 
 @pytest.mark.parametrize("tool", ["wait_for_key_press", "wait_for_click"])
-async def test_nothing_is_pressed_or_clicked_in_a_moment(client: Client, tool: str) -> None:
+async def test_waiting_ends_in_a_moment(client: Client, tool: str) -> None:
     result = await client.call_tool(tool, {"timeout_seconds": 0.3})
     if result.is_error:
         # Listening needs Input Monitoring, which a build machine may not grant: the error says so.
         assert "Input Monitoring" in text(result), text(result)
         pytest.skip("Input Monitoring isn't granted here")
 
-    assert result.structured_content in ({"key": None}, {"click": None})
+    # Nothing is asked of the user, but a key pressed or a click made meanwhile is a right answer too.
+    name, event = result.structured_content.popitem() if result.structured_content else (None, None)
+    assert name == ("key" if tool == "wait_for_key_press" else "click")
+    if event is not None:
+        assert set(event) >= ({"key", "modifiers", "shortcut"} if name == "key" else {"x", "y", "button", "count"})
