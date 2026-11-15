@@ -1,5 +1,6 @@
 """Helpers shared by the tests."""
 
+import math
 import struct
 import zlib
 from typing import Any, Callable, Dict, List, Optional, Tuple
@@ -58,3 +59,28 @@ def png(width: int = 4, height: int = 4) -> bytes:
         + chunk(b"IDAT", zlib.compress(rows))
         + chunk(b"IEND", b"")
     )
+
+
+def wav(seconds: float = 1.0, frequency: float = 440.0, rate: int = 22050) -> bytes:
+    """A real WAV, a mono tone, written by hand: the tests need a sound that doesn't depend on a voice."""
+    frames = b"".join(
+        struct.pack("<h", int(12000 * math.sin(2 * math.pi * frequency * index / rate)))
+        for index in range(int(seconds * rate))
+    )
+    header = struct.pack(
+        "<4sI4s4sIHHIIHH4sI",
+        b"RIFF",
+        36 + len(frames),
+        b"WAVE",
+        b"fmt ",
+        16,
+        1,
+        1,
+        rate,
+        rate * 2,
+        2,
+        16,
+        b"data",
+        len(frames),
+    )
+    return header + frames
