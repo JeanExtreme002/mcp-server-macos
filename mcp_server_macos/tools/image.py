@@ -8,7 +8,7 @@ import macos
 from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
-from .._registry import READ_ONLY, REPLACING, add_tool
+from .._registry import DESTRUCTIVE, READ_ONLY, REPLACING, add_tool
 from .._values import plain
 
 ImagePath = Annotated[str, Field(description="The path of the image: any format macOS opens (JPEG, PNG, HEIC...).", min_length=1)]
@@ -290,11 +290,18 @@ def register(server: MCPServer) -> None:
     add_tool(server, get_image_info, title="Get an image's information", annotations=READ_ONLY)
     add_tool(server, get_image_metadata, title="Get an image's metadata", annotations=READ_ONLY)
     add_tool(server, get_image_colors, title="Get an image's main colors", annotations=READ_ONLY)
-    # The others write a file, over the one that may be there; two change the photo itself.
-    for tool, title in (
+    # These set a value, or make a file from scratch: doing it again gives the same file.
+    for setter, title in (
         (remove_image_metadata, "Remove an image's metadata"),
         (set_image_date, "Set when a photo was taken"),
         (set_image_location, "Set where a photo was taken"),
+        (make_contact_sheet, "Make a contact sheet"),
+        (make_qr_code, "Make a QR code"),
+    ):
+        add_tool(server, setter, title=title, annotations=REPLACING)
+    # These change the picture, and the output may be the source: done again, they turn, crop or mark
+    # it again, or lose more quality. Not idempotent, then, and they write over a file.
+    for transform, title in (
         (convert_image, "Convert an image"),
         (resize_image, "Resize an image"),
         (crop_image, "Crop an image"),
@@ -307,7 +314,5 @@ def register(server: MCPServer) -> None:
         (blur_image_background, "Blur a photo's background"),
         (replace_image_background, "Replace a photo's background"),
         (watermark_image, "Watermark an image"),
-        (make_contact_sheet, "Make a contact sheet"),
-        (make_qr_code, "Make a QR code"),
     ):
-        add_tool(server, tool, title=title, annotations=REPLACING)
+        add_tool(server, transform, title=title, annotations=DESTRUCTIVE)

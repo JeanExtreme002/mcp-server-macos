@@ -229,7 +229,7 @@ WRITERS: Dict[str, Tuple[Dict[str, Any], str, Tuple[Any, ...], Dict[str, Any]]] 
             "bookmarks": [{"title": "Intro", "page": 1}, {"title": "1.1", "page": 4, "level": 1}],
         },
         "set_bookmarks",
-        ("a.pdf", "b.pdf", [("Intro", 1, 0), ("1.1", 4, 1)]),
+        ("a.pdf", "b.pdf", [macos.pdf.Bookmark("Intro", 1, 0), macos.pdf.Bookmark("1.1", 4, 1)]),
         {"password": None},
     ),
 }
@@ -403,7 +403,7 @@ async def test_replace_some_of_the_places_a_text_shows(client: Client, monkeypat
     assert not result.is_error, text(result)
     assert recorder.calls[1] == (
         "replace",
-        ("l.pdf", "r.pdf", [hits[1]], "Maria Lima"),
+        ("l.pdf", "r.pdf", {hits[1]: "Maria Lima"}),
         {"color": "#000000", "background": "#ffffff", "font": None, "size": 10.0, "password": None},
     )
 
@@ -442,3 +442,56 @@ async def test_pdfs_are_not_touched_without_what_they_need(
 
     assert result.is_error
     assert recorder.calls == []
+
+
+async def test_replace_some_places_of_a_pattern_fills_its_groups_in(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    # pymacos writes the text given as it is in place of a match: the groups are filled in for each one.
+    hits = [match(1, "Ana Souza", 10.0), match(2, "Ana\nLima", 20.0)]
+    recorder = Recorder()
+    monkeypatch.setattr(macos.pdf, "find", recorder.function("find", hits))
+    monkeypatch.setattr(macos.pdf, "replace", recorder.function("replace", done(macos.pdf.Edit)))
+
+    result = await client.call_tool(
+        "replace_in_pdf",
+        {
+            "path": "l.pdf",
+            "output": "r.pdf",
+            "replacements": {r"Ana (\w+)": r"Maria \1"},
+            "regex": True,
+            "occurrences": [1, 2],
+        },
+    )
+
+    assert not result.is_error, text(result)
+    assert recorder.calls[1][1][2] == {hits[0]: "Maria Souza", hits[1]: "Maria Lima"}
+
+
+async def test_heading_of_the_contents_is_written_back(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    # A page 0 is a heading that opens nothing: what list_pdf_bookmarks gives, set_pdf_bookmarks takes.
+    recorder = Recorder()
+    monkeypatch.setattr(macos.pdf, "set_bookmarks", recorder.function("set_bookmarks", OUT))
+
+    result = await client.call_tool(
+        "set_pdf_bookmarks",
+        {
+            "path": "a.pdf",
+            "output": "b.pdf",
+            "bookmarks": [{"title": "Part I", "page": 0}, {"title": "1", "page": 1, "level": 1}],
+        },
+    )
+
+    assert not result.is_error, text(result)
+    marks = recorder.calls[0][1][2]
+    assert all(isinstance(mark, macos.pdf.Bookmark) for mark in marks)
+    assert [(mark.title, mark.page, mark.level) for mark in marks] == [("Part I", 0, 0), ("1", 1, 1)]
+
+
+async def test_pdf_descriptions_say_what_is_lost(client: Client) -> None:
+    described = {tool.name: tool for tool in (await client.list_tools()).tools}
+
+    # The encryption, for every tool that writes a PDF but the one that encrypts.
+    output = described["rotate_pdf_pages"].input_schema["properties"]["output"]["description"]
+    assert "The result isn't encrypted" in output
+    # The text layer of the pages erasing or replacing redraws.
+    for tool in ("erase_from_pdf", "replace_in_pdf"):
+        assert "the rest of its text can't be selected" in " ".join((described[tool].description or "").split())

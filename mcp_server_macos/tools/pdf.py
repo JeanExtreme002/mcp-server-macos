@@ -9,10 +9,17 @@ import macos
 from mcp.server.mcpserver import Image, MCPServer
 from pydantic import BaseModel, Field
 
-from .._registry import READ_ONLY, REPLACING, add_tool
+from .._registry import DESTRUCTIVE, READ_ONLY, REPLACING, add_tool
 
 PdfPath = Annotated[str, Field(description="The path of the PDF.", min_length=1)]
-Output = Annotated[str, Field(description="Where to save the resulting PDF. A file already there is replaced.", min_length=1)]
+Output = Annotated[
+    str,
+    Field(
+        description="Where to save the resulting PDF. A file already there is replaced. The result isn't encrypted, "
+        "even when the PDF was: save it apart from an encrypted original, and encrypt it again if it should be.",
+        min_length=1,
+    ),
+]
 Password = Annotated[Optional[str], Field(description="The password that opens the PDF, when it's encrypted.")]
 Pages = Annotated[
     Optional[List[Annotated[int, Field(ge=1)]]],
@@ -162,6 +169,21 @@ def _some(
             "occurrences must be from 1 to {}, the times the text shows, not {}".format(len(found), ", ".join(map(str, wrong)))
         )
     return [found[number - 1] for number in dict.fromkeys(occurrences)]
+
+
+def _expanded(target: Union[str, "re.Pattern[str]"], found: str, new: str) -> str:
+    """``new`` with the groups of ``target`` filled in from ``found``, the text one of its matches has."""
+    if isinstance(target, str):
+        return new
+    # The match is found ignoring spacing and line breaks, which its text may have otherwise.
+    matched = target.fullmatch(found) or target.fullmatch(" ".join(found.split())) or target.search(found)
+    if matched is None:
+        raise ValueError(
+            "{!r} found {!r}, which it doesn't match as written: give the replacement without groups".format(
+                target.pattern, found
+            )
+        )
+    return matched.expand(new)
 
 
 def get_pdf_info(path: PdfPath, password: Password = None) -> PdfInfo:
@@ -454,7 +476,9 @@ def set_pdf_bookmarks(
     password: Password = None,
 ) -> Saved:
     """Give a PDF a table of contents, in place of the one it has."""
-    marks = [(mark.title, mark.page, mark.level) for mark in bookmarks]
+    # As pymacos's own bookmarks: a page 0 is a heading that opens nothing only in that form, where a
+    # tuple's 0 is taken for a mistake. So a table of contents list_pdf_bookmarks gave is written back.
+    marks = [macos.pdf.Bookmark(title=mark.title, page=mark.page, level=mark.level) for mark in bookmarks]
     return _saved(macos.pdf.set_bookmarks(path, output, marks, password=password))
 
 
@@ -492,8 +516,9 @@ def erase_from_pdf(
     password: Password = None,
 ) -> Changes:
     """
-    Take texts out of a PDF's pages, painting the background where they were. For editing: to make
-    sure a text can't be recovered from the file, use redact_pdf.
+    Take texts out of a PDF's pages, painting the background where they were. Each page with a match
+    becomes a picture of what it shows: the rest of its text can't be selected or searched any more.
+    For editing: to make sure a text can't be recovered from the file, use redact_pdf.
     """
     found = _targets(targets, regex)
     if occurrences is not None:
@@ -536,8 +561,11 @@ def replace_in_pdf(
     password: Password = None,
 ) -> Changes:
     """
-    Write new texts where a PDF's pages say old ones, in the old text's font and size. A longer text
-    runs past where the old one was: look the result over. A text that isn't found is an error.
+    Write new texts where a PDF's pages say old ones, in the old text's font and size. Each page with a
+    match becomes a picture of what it shows, with the new texts on it: the rest of its text can't be
+    selected, searched or replaced any more, so give every replacement in one call, and keep the
+    original. A longer text runs past where the old one was: look the result over. A text that isn't
+    found is an error.
     """
     if occurrences is not None:
         if len(replacements) != 1:
@@ -545,8 +573,11 @@ def replace_in_pdf(
         ((old, new),) = replacements.items()
         (target,) = _targets([old], regex)
         chosen = _some(path, target, occurrences, pages, password)
+        # pymacos writes the text given as it is in place of a match: the groups of a pattern are filled
+        # in here, for each match, from the text it found.
+        written: Dict[Any, str] = {match: _expanded(target, match.text, new) for match in chosen}
         done = macos.pdf.replace(
-            path, output, chosen, new, color=color, background=background, font=font, size=size, password=password
+            path, output, written, color=color, background=background, font=font, size=size, password=password
         )
         return _changes(done)
     compiled: Dict[Any, str] = dict(zip(_targets(list(replacements), regex), replacements.values()))
@@ -566,25 +597,30 @@ def register(server: MCPServer) -> None:
         (list_pdf_form_fields, "Get a PDF form's fields"),
     ):
         add_tool(server, tool, title=title, annotations=READ_ONLY)
-    # The others write a PDF, over the one that may be there.
-    for writer, title in (
-        (merge_pdfs, "Merge PDFs"),
-        (extract_pdf_pages, "Extract pages of a PDF"),
-        (rotate_pdf_pages, "Rotate pages of a PDF"),
+    # These set something, or make a file from scratch: doing it again gives the same file.
+    for setter, title in (
         (encrypt_pdf, "Encrypt a PDF"),
         (decrypt_pdf, "Decrypt a PDF"),
-        (ocr_pdf, "Make a scanned PDF searchable"),
-        (watermark_pdf, "Watermark a PDF"),
-        (compress_pdf, "Compress a PDF"),
         (grayscale_pdf, "Make a PDF grayscale"),
         (images_to_pdf, "Make a PDF from images"),
         (extract_pdf_images, "Save a PDF's pictures"),
         (fill_pdf_form, "Fill in a PDF form"),
-        (sign_pdf, "Sign a PDF with a picture"),
-        (add_text_to_pdf, "Write text on a PDF"),
         (set_pdf_bookmarks, "Set a PDF's table of contents"),
         (redact_pdf, "Redact a PDF"),
+    ):
+        add_tool(server, setter, title=title, annotations=REPLACING)
+    # These change the pages, and the output may be the source: done again, they turn, mark, sign or
+    # shrink it again. Not idempotent, then, and they write over a file.
+    for transform, title in (
+        (merge_pdfs, "Merge PDFs"),
+        (extract_pdf_pages, "Extract pages of a PDF"),
+        (rotate_pdf_pages, "Rotate pages of a PDF"),
+        (ocr_pdf, "Make a scanned PDF searchable"),
+        (watermark_pdf, "Watermark a PDF"),
+        (compress_pdf, "Compress a PDF"),
+        (sign_pdf, "Sign a PDF with a picture"),
+        (add_text_to_pdf, "Write text on a PDF"),
         (erase_from_pdf, "Erase text from a PDF"),
         (replace_in_pdf, "Replace text in a PDF"),
     ):
-        add_tool(server, writer, title=title, annotations=REPLACING)
+        add_tool(server, transform, title=title, annotations=DESTRUCTIVE)

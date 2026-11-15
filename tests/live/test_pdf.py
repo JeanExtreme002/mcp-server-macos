@@ -58,6 +58,23 @@ async def test_text_is_replaced_in_one_place_only(client: Client, contract: str,
     assert len(hits) == 1
 
 
+async def test_some_places_of_a_pattern_are_replaced_with_its_groups(client: Client, contract: str, tmp_path: Path) -> None:
+    done = await call(
+        client,
+        "replace_in_pdf",
+        {
+            "path": contract,
+            "output": str(tmp_path / "g.pdf"),
+            "replacements": {r"Jane (\w+)": r"Maria \1"},
+            "regex": True,
+            "occurrences": [1],
+        },
+    )
+
+    assert done["matches"] == {"Jane Doe": 1} or sum(done["matches"].values()) == 1
+    assert len(await call(client, "find_in_pdf", {"path": done["path"], "text": "Maria Doe"})) == 1
+
+
 async def test_pages_are_merged_extracted_and_turned(client: Client, contract: str, tmp_path: Path) -> None:
     merged = (await call(client, "merge_pdfs", {"inputs": [contract, contract], "output": str(tmp_path / "m.pdf")}))["path"]
     assert (await call(client, "get_pdf_info", {"path": merged}))["pages"] == 2
@@ -102,10 +119,14 @@ async def test_pdf_is_marked_signed_and_given_contents(client: Client, contract:
         saved = await call(client, tool, {"path": contract, "output": str(output), **arguments})
         assert Path(saved["path"]).is_file(), tool
 
-    marks = [{"title": "Contract", "page": 1}, {"title": "Parties", "page": 1, "level": 1}]
+    marks = [{"title": "Contract", "page": 1}, {"title": "Parties", "page": 1, "level": 1}, {"title": "Annex", "page": 0}]
     given = {"path": contract, "output": str(tmp_path / "b.pdf"), "bookmarks": marks}
     marked = (await call(client, "set_pdf_bookmarks", given))["path"]
-    assert await call(client, "list_pdf_bookmarks", {"path": marked}) == [{**marks[0], "level": 0}, marks[1]]
+    listed = await call(client, "list_pdf_bookmarks", {"path": marked})
+    assert listed == [{**marks[0], "level": 0}, marks[1], {**marks[2], "level": 0}]
+    # What was listed is written back as it is, the heading of page 0 included.
+    again = {"path": contract, "output": str(tmp_path / "b2.pdf"), "bookmarks": listed}
+    assert await call(client, "list_pdf_bookmarks", {"path": (await call(client, "set_pdf_bookmarks", again))["path"]}) == listed
     assert await call(client, "list_pdf_form_fields", {"path": contract}) == []
 
 
