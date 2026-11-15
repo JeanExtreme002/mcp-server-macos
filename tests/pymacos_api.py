@@ -24,6 +24,8 @@ from mcp_server_macos import tools
 
 #: The functions of pymacos that no tool uses, on purpose, and why.
 EXCLUDED: Dict[str, str] = {
+    "audio.outputs": "the devices of audio.devices() that play sound, which get_audio_status gives apart",
+    "audio.inputs": "the devices of audio.devices() that record sound, which get_audio_status gives apart",
     "settings.batch": "a with block around other calls: apply_settings already restarts the Dock and Finder once",
     "auth.required": "a decorator for Python functions: authenticate_user asks the same question",
     "defaults.restored": "a with block around other calls: read_preference before and write_preference after do the same",

@@ -6,7 +6,7 @@ import macos
 from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
 
-from .._registry import READ_ONLY, READ_ONLY_ONLINE, REPLACING, add_tool
+from .._registry import OPEN_ENDED, READ_ONLY, READ_ONLY_ONLINE, REPLACING, add_tool
 
 VPNName = Annotated[
     str, Field(description="The VPN's name, as set up in System Settings › VPN: list_vpns lists them.", min_length=1)
@@ -260,5 +260,6 @@ def register(server: MCPServer) -> None:
     add_tool(server, run_speed_test, title="Run an internet speed test", annotations=READ_ONLY_ONLINE)
     add_tool(server, set_wifi_power, title="Turn Wi-Fi on or off", annotations=REPLACING)
     add_tool(server, list_vpns, title="List the VPNs", annotations=READ_ONLY)
-    add_tool(server, connect_vpn, title="Connect a VPN", annotations=REPLACING)
-    add_tool(server, disconnect_vpn, title="Disconnect a VPN", annotations=REPLACING)
+    # A VPN changes where all of the Mac's traffic goes, over the network: beyond this Mac, then.
+    add_tool(server, connect_vpn, title="Connect a VPN", annotations=OPEN_ENDED)
+    add_tool(server, disconnect_vpn, title="Disconnect a VPN", annotations=OPEN_ENDED)
