@@ -315,6 +315,25 @@ async def test_displays_are_told_by_their_number(
     assert mac.calls == [call]
 
 
+async def test_a_mirrored_display_leaves_the_numbers(
+    client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # pymacos lists the active displays, which leave out one that mirrors another: after display 2
+    # mirrors the main one, the third is number 2. The same call made again mirrors that one too, which
+    # is why mirror_display isn't marked as safe to retry.
+    third = macos.screen.Display(**{**vars(EXTERNAL), "id": 9, "name": "Projector"})
+    shown = [BUILT_IN, EXTERNAL, third]
+    monkeypatch.setattr(macos.screen, "displays", lambda: list(shown))
+    monkeypatch.setattr(macos.screen, "mirror", lambda display, of: shown.remove(display))
+
+    for _ in range(2):
+        assert not (await client.call_tool("mirror_display", {"display": 2})).is_error
+
+    assert shown == [BUILT_IN]
+    (tool,) = [tool for tool in (await client.list_tools()).tools if tool.name == "mirror_display"]
+    assert tool.annotations is not None and tool.annotations.idempotent_hint is False
+
+
 @pytest.mark.parametrize(
     "schedule, shown",
     [

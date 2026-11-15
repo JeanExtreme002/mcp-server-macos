@@ -409,7 +409,10 @@ def mirror_display(
         Optional[int], Field(description="The display it shows the picture of. The main one by default.", ge=1)
     ] = None,
 ) -> str:
-    """Make a display show the same picture as another, as Mirror Displays does: for a projector or a TV."""
+    """
+    Make a display show the same picture as another, as Mirror Displays does: for a projector or a TV.
+    It leaves the list of get_displays then, and the displays after it move up a number.
+    """
     macos.screen.mirror(_display(display), None if of is None else _display(of))
     return "Display {} mirrors display {}.".format(display, of or 1)
 
@@ -600,7 +603,6 @@ def register(server: MCPServer) -> None:
     # things as they were once the user is back, as turning the display off does.
     for setter, title in (
         (set_display_mode, "Change a display's resolution"),
-        (mirror_display, "Mirror a display"),
         (stop_mirroring, "Stop mirroring displays"),
         (set_display_brightness, "Set a display's brightness"),
         (set_wallpaper, "Set the wallpaper"),
@@ -610,6 +612,9 @@ def register(server: MCPServer) -> None:
         (lock_screen, "Lock the screen"),
     ):
         add_tool(server, setter, title=title, annotations=REPLACING)
-    # Displays are told by their number, and the main one is number 1: the same call made again makes
-    # the other display the main one, back as it was. Not to retry, then.
+    # Displays are told by their number, which these change. The main one is number 1: the same call made
+    # again makes the other display the main one, back as it was. A display that mirrors another leaves
+    # the list (only the one it shows the picture of is in it), and the next ones move up: the same call
+    # made again mirrors another display. Not to retry, then.
     add_tool(server, set_main_display, title="Choose the main display", annotations=DESTRUCTIVE)
+    add_tool(server, mirror_display, title="Mirror a display", annotations=DESTRUCTIVE)

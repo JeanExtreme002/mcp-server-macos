@@ -269,7 +269,7 @@ ANNOTATIONS = {
     "record_screen": REPLACING,
     "set_display_mode": REPLACING,
     "set_main_display": DESTRUCTIVE,
-    "mirror_display": REPLACING,
+    "mirror_display": DESTRUCTIVE,
     "stop_mirroring": REPLACING,
     "set_display_brightness": REPLACING,
     "set_wallpaper": REPLACING,
