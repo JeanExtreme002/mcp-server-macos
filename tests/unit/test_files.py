@@ -65,3 +65,24 @@ def test_new_file_gets_the_usual_permissions(tmp_path: Path) -> None:
         os.umask(mask)
 
     assert written.stat().st_mode & 0o777 == 0o644
+
+
+def test_longest_name_a_disk_takes_is_written(tmp_path: Path) -> None:
+    # The temporary file's name doesn't grow with the destination's: 255 characters still fit.
+    longest = "x" * 251 + ".png"
+
+    written = _files.write(str(tmp_path / longest), b"picture")
+
+    assert written.name == longest
+    assert written.read_bytes() == b"picture"
+
+
+def test_umask_of_the_process_is_never_changed(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    # The tools run on several threads: a umask changed for a moment would apply to them all.
+    def changed(mask: int) -> int:
+        raise AssertionError("the umask was changed")
+
+    monkeypatch.setattr(os, "umask", changed)
+
+    _files.write(str(tmp_path / "new.png"), b"x")
+    _files.write(str(tmp_path / "new.png"), b"y")

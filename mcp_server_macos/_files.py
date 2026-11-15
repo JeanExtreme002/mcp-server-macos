@@ -1,8 +1,8 @@
 """Writing the files the tools make, without losing the one that was there when writing fails."""
 
 import os
+import secrets
 import shutil
-import tempfile
 from pathlib import Path
 
 
@@ -13,28 +13,37 @@ def write(path: str, data: bytes) -> Path:
     The bytes go to a new file beside it, which takes the place of the old one only once it's whole: a
     full disk or another failure leaves the file that was there as it was, even when it was the tool's
     own source. A symbolic link is written through, to the file it points at, and an existing file's
-    permissions are kept.
+    permissions are kept; a new one gets the usual ones, as the process's umask makes them.
     """
     target = Path(path).expanduser().absolute()
     if target.is_symlink():
         target = target.resolve()
-    handle, temporary = tempfile.mkstemp(dir=target.parent, prefix=".{}.".format(target.name), suffix=".tmp")
+    temporary = _create(target.parent)
     try:
-        with os.fdopen(handle, "wb") as written:
+        with os.fdopen(os.open(temporary, os.O_WRONLY), "wb") as written:
             written.write(data)
         if target.exists():
             shutil.copymode(target, temporary)
-        else:
-            os.chmod(temporary, 0o666 & ~_umask())
         os.replace(temporary, target)
     except BaseException:
-        Path(temporary).unlink(missing_ok=True)
+        temporary.unlink(missing_ok=True)
         raise
     return target
 
 
-def _umask() -> int:
-    # The only way to read it is to set it: set it back at once.
-    current = os.umask(0)
-    os.umask(current)
-    return current
+def _create(folder: Path) -> Path:
+    """
+    A new, empty file in ``folder``, for this process alone to write.
+
+    Its name is short and fixed but for a random part, so a destination of the longest name a disk
+    takes still has room beside it. It's created exclusively, with the mode a new file gets: the kernel
+    applies the umask, which is never changed here (the tools run on several threads, and the umask is
+    the whole process's).
+    """
+    while True:
+        candidate = folder / ".mcp-server-macos-{}.tmp".format(secrets.token_hex(8))
+        try:
+            os.close(os.open(candidate, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o666))
+        except FileExistsError:
+            continue
+        return candidate
