@@ -113,7 +113,8 @@ The tests are in two folders, with one file per module (`test_system.py` tests
   Keychain item of the tests' own are written and removed, Calculator is opened in the background and
   quit (unless it was open), three dialogs show for a second each, a folder of the tests' own is left
   out of the Time Machine backups and put back, and documents, images, PDFs, videos and sounds are
-  made, converted and edited in a temporary folder. The microphone isn't recorded. They only use the tools that
+  made, converted and edited in a temporary folder, where Finder's tags, aliases, icons and zips are
+  tried too. The microphone isn't recorded, and nothing goes to the Trash. They only use the tools that
   leave things as they were: nothing is put to sleep, said out loud, turned off, installed or run, and
   no setting is changed.
 

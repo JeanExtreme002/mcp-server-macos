@@ -24,6 +24,7 @@ from mcp_server_macos import tools
 
 #: The functions of pymacos that no tool uses, on purpose, and why.
 EXCLUDED: Dict[str, str] = {
+    "finder.watch": "yields changes for as long as it's iterated: a tool call returns once (wait_for_folder_change)",
     "audio.outputs": "the devices of audio.devices() that play sound, which get_audio_status gives apart",
     "audio.inputs": "the devices of audio.devices() that record sound, which get_audio_status gives apart",
     "auth.required": "a decorator for Python functions: authenticate_user asks the same question",
