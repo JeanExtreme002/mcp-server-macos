@@ -1,8 +1,10 @@
 """The tools of mcp_server_macos.tools.mouse, with macos.mouse faked: the pointer isn't moved, nothing is clicked."""
 
 import contextlib
+import time
 from typing import Any, Dict, Iterator, List
 
+import anyio
 import macos
 import pytest
 from mcp import Client
@@ -128,6 +130,32 @@ async def test_keys_held_are_released_when_the_click_fails(
     assert mac.names == ["hold", "click", "release"]
 
 
+async def test_a_drag_starts_where_it_was_told_while_the_pointer_is_moved(
+    client: Client, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A drag moves the pointer, then drags from where it is: a move in between would drag from elsewhere.
+    pointer = [(0.0, 0.0)]
+    started: List[Any] = []
+
+    def move(x: float, y: float, **options: Any) -> None:
+        time.sleep(0.02)
+        pointer[0] = (x, y)
+
+    def drag(x: float, y: float, **options: Any) -> None:
+        time.sleep(0.02)
+        started.append(pointer[0])
+
+    monkeypatch.setattr(macos.mouse, "move", move)
+    monkeypatch.setattr(macos.mouse, "drag", drag)
+
+    async with anyio.create_task_group() as group:
+        group.start_soon(client.call_tool, "drag", {"to_x": 600, "to_y": 50, "from_x": 10, "from_y": 20})
+        for _ in range(3):
+            group.start_soon(client.call_tool, "move_pointer", {"x": 500, "y": 500})
+
+    assert started == [(10.0, 20.0)]
+
+
 async def test_click_text(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
     recorder = Recorder()
     found = macos.screen.TextMatch(text="Submit", x=100, y=200, width=60, height=20)
@@ -192,6 +220,9 @@ async def test_wait_for_click(client: Client, monkeypatch: pytest.MonkeyPatch, c
         ("drag", {"to_x": 1}),
         ("drag", {"to_x": 1, "to_y": 2, "from_x": 3}),
         ("scroll", {}),
+        # Held keys are modifiers: a shortcut held down would do what it does, closing a window here.
+        ("scroll", {"lines": 0, "holding": ["cmd+w"]}),
+        ("click", {"holding": ["w"]}),
         ("move_pointer", {"x": 1, "y": 2, "duration_seconds": 11}),
         ("set_mouse_settings", {}),
         ("set_mouse_settings", {"tracking_speed": 2}),

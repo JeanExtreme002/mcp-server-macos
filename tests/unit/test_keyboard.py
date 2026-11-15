@@ -2,8 +2,10 @@
 
 import contextlib
 import threading
+import time
 from typing import Any, Dict, Iterator, List
 
+import anyio
 import macos
 import pytest
 from mcp import Client
@@ -12,6 +14,12 @@ from mcp_server_macos.tools import keyboard
 from tests.helpers import Recorder, text
 
 pytestmark = pytest.mark.anyio
+
+
+@pytest.fixture(autouse=True)
+def layout(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Pressing and watching have the main thread read the layout first: here, without macOS's.
+    monkeypatch.setattr(macos.keyboard, "layout", lambda: "ABC")
 
 
 @pytest.fixture
@@ -194,6 +202,60 @@ async def test_every_keyboard_setter_is_offered(client: Client) -> None:
 
 async def test_system_shortcuts_are_those_of_pymacos() -> None:
     assert set(keyboard.SystemShortcut.__args__) == set(macos.keyboard.SYSTEM_SHORTCUTS)  # type: ignore[attr-defined]
+
+
+@pytest.mark.parametrize(
+    "tool, arguments, name", [("press_keys", {"keys": "cmd+a"}, "press"), ("wait_for_key_press", {}, "watch")]
+)
+async def test_the_layout_is_read_on_the_main_thread_first(
+    client: Client, monkeypatch: pytest.MonkeyPatch, tool: str, arguments: Dict[str, Any], name: str
+) -> None:
+    # Off the main thread, pymacos can't read a layout unlike a US one (AZERTY): Cmd+A would fail, or
+    # keys watched would be named by what they type. The main thread reads it, the rest stays off it.
+    threads: List[Any] = []
+
+    def read() -> str:
+        threads.append(("layout", threading.current_thread()))
+        return "French"
+
+    def used(*args: Any, **options: Any) -> List[Any]:
+        threads.append((name, threading.current_thread()))
+        return []
+
+    monkeypatch.setattr(macos.keyboard, "layout", read)
+    monkeypatch.setattr(macos.keyboard, name, used)
+
+    result = await client.call_tool(tool, arguments)
+
+    assert not result.is_error, text(result)
+    assert [what for what, _ in threads] == ["layout", name]
+    assert threads[0][1] is threading.main_thread()
+    assert threads[1][1] is not threading.main_thread()
+
+
+async def test_lists_saved_whole_are_changed_in_turn(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
+    # As pymacos does: read the whole list, take a moment, write it back. Calls at once must not write
+    # over each other's change.
+    saved: List[str] = []
+
+    def change(item: str) -> Any:
+        def call(*args: Any, **options: Any) -> None:
+            read = list(saved)
+            time.sleep(0.05)
+            saved[:] = read + [item]
+
+        return call
+
+    for name in ("remap", "clear_remappings", "set_app_shortcut", "set_system_shortcut"):
+        monkeypatch.setattr(macos.keyboard, name, change(name))
+
+    async with anyio.create_task_group() as group:
+        group.start_soon(client.call_tool, "remap_key", {"key": "caps_lock", "to": "escape"})
+        group.start_soon(client.call_tool, "clear_key_remappings", {})
+        group.start_soon(client.call_tool, "set_app_shortcut", {"app": None, "menu_item": "Export…", "keys": "cmd+e"})
+        group.start_soon(client.call_tool, "set_system_shortcut", {"name": "spotlight", "on": False})
+
+    assert sorted(saved) == ["clear_remappings", "remap", "set_app_shortcut", "set_system_shortcut"]
 
 
 @pytest.mark.parametrize("pressed", [True, False])

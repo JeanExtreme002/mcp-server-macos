@@ -1,7 +1,8 @@
 """Tools for the mouse: the pointer, clicking, dragging and scrolling, and the mouse's settings, from ``macos.mouse``."""
 
 import contextlib
-from typing import Annotated, Iterator, List, Literal, Optional
+import threading
+from typing import Annotated, Iterator, List, Literal, Optional, Sequence
 
 import macos
 from mcp.server.mcpserver import MCPServer
@@ -14,12 +15,21 @@ X = Annotated[float, Field(description="The x position, in points from the left 
 Y = Annotated[float, Field(description="The y position, in points from the top of the main display.")]
 Button = Annotated[Literal["left", "right", "middle"], Field(description="The button: 'left', 'right' or 'middle'.")]
 Count = Annotated[int, Field(description="How many clicks: 2 for a double click.", ge=1, le=3)]
+# Modifiers only: a key such as 'cmd+w' held down would do its shortcut, which isn't what a scroll or a
+# click asks for. press_keys is for those.
 Holding = Annotated[
-    Optional[List[str]],
+    Optional[List[Literal["cmd", "shift", "option", "ctrl", "fn"]]],
     Field(
-        description="Keys to hold down meanwhile, for a Shift-click, a Cmd-click or an Option-drag: ['shift'], ['cmd', 'option']."
+        description="Modifier keys to hold down meanwhile, for a Shift-click, a Cmd-click or an Option-drag: "
+        "['shift'], ['cmd', 'option']."
     ),
 ]
+
+# There's one pointer, and the tools run on worker threads: a move between a drag's own move and the
+# drag, which starts where the pointer is, would drag from elsewhere. What moves the pointer takes turns,
+# across every server of the process. click_text doesn't: it may wait minutes for its text to show up,
+# and the click that ends it is made where the text is, wherever the pointer was.
+_POINTER = threading.Lock()
 
 
 class Pointer(BaseModel):
@@ -65,7 +75,7 @@ class TextClicked(BaseModel):
 
 
 @contextlib.contextmanager
-def _holding(keys: Optional[List[str]]) -> Iterator[None]:
+def _holding(keys: Optional[Sequence[str]]) -> Iterator[None]:
     if keys:
         with macos.keyboard.hold(*keys):
             yield
@@ -96,7 +106,8 @@ def move_pointer(
     ] = 0.0,
 ) -> str:
     """Move the pointer, as a real mouse would: apps see hover effects and tooltips."""
-    macos.mouse.move(x, y, duration=duration_seconds)
+    with _POINTER:
+        macos.mouse.move(x, y, duration=duration_seconds)
     return "The pointer is at ({:g}, {:g}).".format(x, y)
 
 
@@ -119,7 +130,7 @@ def click(
     """
     if (x is None) != (y is None):
         raise ValueError("give both x and y, or neither to click where the pointer is")
-    with _holding(holding):
+    with _POINTER, _holding(holding):
         macos.mouse.click(x, y, button=button, count=count)
     where = "where the pointer is" if x is None else "at ({:g}, {:g})".format(x, y or 0)
     return "Clicked {}.".format(where)
@@ -162,7 +173,7 @@ def drag(
     """Drag from one place to another, with a button held: to move a window, select text, or drop a file somewhere."""
     if (from_x is None) != (from_y is None):
         raise ValueError("give both from_x and from_y, or neither to start where the pointer is")
-    with _holding(holding):
+    with _POINTER, _holding(holding):
         if from_x is not None and from_y is not None:
             macos.mouse.move(from_x, from_y)
         macos.mouse.drag(to_x, to_y, button=button, duration=duration_seconds)
@@ -177,7 +188,7 @@ def scroll(
     holding: Holding = None,
 ) -> str:
     """Scroll what's under the pointer, as a mouse wheel would. Holding cmd zooms in many apps."""
-    with _holding(holding):
+    with _POINTER, _holding(holding):
         macos.mouse.scroll(lines, horizontal=horizontal)
     return "Scrolled {} line{}.".format(lines, "" if abs(lines) == 1 else "s")
 

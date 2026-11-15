@@ -1,7 +1,9 @@
 """Tools for the keyboard: typing and pressing keys, its layout, backlight, settings and shortcuts, from ``macos.keyboard``."""
 
+import threading
 from typing import Annotated, Any, Callable, Dict, List, Literal, Optional, Tuple
 
+import anyio.from_thread
 import macos
 from mcp.server.mcpserver import MCPServer
 from pydantic import BaseModel, Field
@@ -35,6 +37,29 @@ SystemShortcut = Literal[
     "move_right_a_space",
     "dock_hiding",
 ]
+
+
+# pymacos reads the whole list of remappings, of an app's shortcuts or of macOS's shortcuts and writes it
+# back for each change, and the tools run on worker threads: two changes at once would each write the
+# list without the other's. They take turns, across every server of the process, as the Mac is one.
+_SAVED = threading.Lock()
+
+
+def _read_layout_on_main_thread() -> None:
+    """
+    Have the main thread read the keyboard layout in use, so that this worker can find its keys.
+
+    macOS only hands a layout over on the main thread, and pymacos keeps what it read there for other
+    threads: without it, a layout unlike a US one (AZERTY...) can't be pressed off the main thread, and
+    keys watched are named by what they type. Only the read goes to the main thread: the press or the
+    wait stays on the worker, so that the server keeps answering meanwhile.
+    """
+    try:
+        anyio.from_thread.run_sync(macos.keyboard.layout)
+    except RuntimeError:
+        # Not one of the server's workers (a thread of the caller's own, or the main thread itself):
+        # pymacos reads the layout there if it can, and says what to do if it can't.
+        pass
 
 
 class KeyboardStatus(BaseModel):
@@ -133,6 +158,7 @@ def press_keys(
     It does whatever the shortcut does in that app, sending, deleting or closing included: know what's
     in front first.
     """
+    _read_layout_on_main_thread()
     macos.keyboard.press(keys, times=times)
     return "Pressed {}{}.".format(keys, "" if times == 1 else " {} times".format(times))
 
@@ -161,6 +187,7 @@ def wait_for_key_press(
     Wait for the user to press a key, in any app, and say which: for a key the user is asked to press.
     The key still reaches the app in front. macOS hides the keys typed in password fields.
     """
+    _read_layout_on_main_thread()
     keys = macos.keyboard.watch(timeout=timeout_seconds)
     try:
         pressed = next(iter(keys), None)
@@ -326,13 +353,15 @@ def remap_key(
     Make a key act as another on every keyboard, such as Caps Lock as Escape, or undo it. It lasts until
     the Mac restarts.
     """
-    macos.keyboard.remap(key, to)
+    with _SAVED:
+        macos.keyboard.remap(key, to)
     return "{} acts as {}.".format(key, to) if to else "{} acts as itself again.".format(key)
 
 
 def clear_key_remappings() -> str:
     """Undo every key remapping: each key acts as itself again."""
-    macos.keyboard.clear_remappings()
+    with _SAVED:
+        macos.keyboard.clear_remappings()
     return "Every key acts as itself again."
 
 
@@ -360,7 +389,8 @@ def set_app_shortcut(
     keys: Annotated[Optional[str], Field(description="The shortcut, written as for press_keys. Null to remove it.")],
 ) -> str:
     """Give a menu item a keyboard shortcut, or take it away. Apps pick it up when they're reopened."""
-    macos.keyboard.set_app_shortcut(app, menu_item, keys)
+    with _SAVED:
+        macos.keyboard.set_app_shortcut(app, menu_item, keys)
     return "{} has {}.".format(menu_item, keys) if keys else "{} has no shortcut.".format(menu_item)
 
 
@@ -369,7 +399,8 @@ def set_system_shortcut(
     on: Annotated[bool, Field(description="True to turn it on, false off. Its keys stay as they are.")],
 ) -> str:
     """Turn one of macOS's own shortcuts on or off: to free ⌘Space for another launcher, say. Applies at once."""
-    macos.keyboard.set_system_shortcut(name, on)
+    with _SAVED:
+        macos.keyboard.set_system_shortcut(name, on)
     return "{} is {}.".format(name, "on" if on else "off")
 
 
