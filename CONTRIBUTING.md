@@ -95,7 +95,11 @@ The command starts with a few toolsets (`CORE`, in `mcp_server_macos/_on_demand.
 sent every tool before its first question. Two tools reach the others: `find_tools` searches every tool,
 enabled or not, and `enable_toolsets` adds toolsets while the server runs, telling the client its list
 changed. A tool added that way is defined exactly as it is with every toolset, schemas and annotations
-included: a test checks it for every tool. `--toolsets system,notifications` (or the
+included: a test checks it for every tool. `enable_toolsets`' description names every tool, by toolset,
+so a model reading it sees what exists. A client that defers the tools itself, showing the model their
+names and loading what it searches for (`CLIENTS_THAT_DEFER`: Claude Code), gets every toolset from the
+start instead: it costs it the names only, and from the core the model saw no name telling it a tool
+existed. `--toolsets system,notifications` (or the
 `MCP_SERVER_MACOS_TOOLSETS` environment variable) starts with others, and `--toolsets all` with every one,
 as `create_server()` does from Python.
 

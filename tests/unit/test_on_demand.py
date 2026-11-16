@@ -158,7 +158,12 @@ async def test_the_two_tools_only_read_and_name_every_toolset() -> None:
         assert listed[name].annotations == READ_ONLY, name
     description = listed["enable_toolsets"].description or ""
     for name in tools.TOOLSETS:
-        assert "- {}: {}".format(name, _on_demand.summary(name)) in description
+        assert "- {}: {}. Tools: ".format(name, _on_demand.summary(name)) in description
+    # Every tool by name, for the clients that find tools by searching what they're told: decrypt_pdf for
+    # "decrypt a PDF", which the pdf toolset's summary doesn't say.
+    async with Client(create_server()) as everything:
+        for tool in (await everything.list_tools()).tools:
+            assert tool.name in description, tool.name
     assert set(listed["enable_toolsets"].input_schema["properties"]["names"]["items"]["enum"]) == set(tools.TOOLSETS)
 
 
@@ -193,4 +198,29 @@ async def test_the_instructions_say_how_to_reach_the_other_tools() -> None:
         every = client.instructions or ""
 
     assert "enable_toolsets" in some and "find_tools" in some
+    assert "before writing a script or installing a library" in some
     assert "enable_toolsets" not in every  # nothing to enable
+
+
+async def test_a_client_that_defers_tools_itself_is_sent_every_one() -> None:
+    # Claude Code shows the model each tool's name and loads what it searches for: from the core alone, the
+    # model saw no name telling it a tool exists, and wrote a script instead.
+    from mcp.types import Implementation
+
+    claude_code = Implementation(name="claude-code", version="2")
+    async with Client(create_server(list(_on_demand.CORE), follow_client=True), client_info=claude_code) as client:
+        assert set(await definitions(client)) - ON_DEMAND == TOOLS
+
+
+async def test_other_clients_and_toolsets_named_by_the_user_keep_the_core() -> None:
+    from mcp.types import Implementation
+
+    claude_code = Implementation(name="claude-code", version="2")
+    other = Implementation(name="some-client", version="1")
+    async with Client(create_server(list(_on_demand.CORE), follow_client=True), client_info=other) as client:
+        core = set(await definitions(client))
+    async with Client(create_server(list(_on_demand.CORE)), client_info=claude_code) as client:
+        named = set(await definitions(client))
+
+    assert len(core) < 20 and "decrypt_pdf" not in core
+    assert named == core  # named by the user: their choice, whichever the client
