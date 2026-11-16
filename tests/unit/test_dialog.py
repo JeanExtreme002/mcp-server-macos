@@ -57,9 +57,7 @@ async def test_ask_confirmation_with_the_buttons_of_macos(client: Client, monkey
 
     await client.call_tool("ask_confirmation", {"message": "Continue?"})
 
-    assert recorder.calls == [
-        ("confirm", ("Continue?",), {"title": None, "ok": "OK", "cancel": "Cancel", "timeout": 120.0})
-    ]
+    assert recorder.calls == [("confirm", ("Continue?",), {"title": None, "ok": "OK", "cancel": "Cancel", "timeout": 120.0})]
 
 
 @pytest.mark.parametrize("answer", ["Jean", "", None])
@@ -100,26 +98,18 @@ async def test_ask_choice(client: Client, monkeypatch: pytest.MonkeyPatch, answe
     assert not result.is_error
     assert result.structured_content == {"choice": answer}
     assert recorder.calls == [
-        (
-            "choose",
-            (["Red", "Blue"],),
-            {"prompt": "Pick a color", "default": "Red", "title": "Colors", "timeout": 120.0},
-        )
+        ("choose", (["Red", "Blue"],), {"prompt": "Pick a color", "default": "Red", "title": "Colors", "timeout": 120.0})
     ]
 
 
 async def test_ask_for_one_file(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
     recorder = fake(monkeypatch, "choose_file", Path("/Users/me/a b.pdf"))
 
-    result = await client.call_tool(
-        "ask_for_files", {"prompt": "Which report?", "types": ["pdf"], "folder": "~/Documents"}
-    )
+    result = await client.call_tool("ask_for_files", {"prompt": "Which report?", "types": ["pdf"], "folder": "~/Documents"})
 
     assert not result.is_error
     assert result.structured_content == {"paths": ["/Users/me/a b.pdf"]}
-    assert recorder.calls == [
-        ("choose_file", ("Which report?",), {"types": ["pdf"], "folder": "~/Documents", "timeout": 120.0})
-    ]
+    assert recorder.calls == [("choose_file", ("Which report?",), {"types": ["pdf"], "folder": "~/Documents", "timeout": 120.0})]
 
 
 async def test_ask_for_several_files(client: Client, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -191,23 +181,23 @@ async def test_dialog_is_not_shown_without_what_it_needs(
 
 
 @pytest.mark.parametrize(
-    "tool, arguments, function",
+    "tool, arguments, function, cancelled",
     [
-        ("ask_choice", {"options": ["Red"], "timeout_seconds": 30}, "choose"),
-        ("ask_for_files", {"timeout_seconds": 30}, "choose_file"),
-        ("ask_for_files", {"multiple": True, "timeout_seconds": 30}, "choose_files"),
-        ("ask_for_folder", {"timeout_seconds": 30}, "choose_folder"),
+        ("ask_choice", {"options": ["Red"], "timeout_seconds": 30}, "choose", {"choice": None}),
+        ("ask_for_files", {"timeout_seconds": 30}, "choose_file", {"paths": []}),
+        ("ask_for_files", {"multiple": True, "timeout_seconds": 30}, "choose_files", {"paths": []}),
+        ("ask_for_folder", {"timeout_seconds": 30}, "choose_folder", {"paths": []}),
     ],
 )
 async def test_the_list_and_pickers_give_up_after_their_timeout(
-    client: Client, monkeypatch: pytest.MonkeyPatch, tool: str, arguments: Dict[str, Any], function: str
+    client: Client, monkeypatch: pytest.MonkeyPatch, tool: str, arguments: Dict[str, Any], function: str, cancelled: Any
 ) -> None:
     # They waited for the user with no time limit: they give up as the other dialogs do now, as cancelled.
     recorder = fake(monkeypatch, function, [] if function == "choose_files" else None)
 
     result = await client.call_tool(tool, arguments)
 
-    assert not result.is_error, text(result)
+    assert result.structured_content == cancelled
     assert recorder.calls[0][2]["timeout"] == 30.0
 
 

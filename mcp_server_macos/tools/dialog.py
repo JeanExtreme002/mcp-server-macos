@@ -42,13 +42,13 @@ class TextAnswer(BaseModel):
 class Choice(BaseModel):
     """What the user picked from a list."""
 
-    choice: Optional[str] = Field(description="The option picked. Null when the user cancelled.")
+    choice: Optional[str] = Field(description="The option picked. Null when the user cancelled, or didn't answer in time.")
 
 
 class ChosenPaths(BaseModel):
     """The files or the folder the user picked."""
 
-    paths: List[str] = Field(description="The paths picked. Empty when the user cancelled.")
+    paths: List[str] = Field(description="The paths picked. Empty when the user cancelled, or didn't answer in time.")
 
 
 def show_alert(
@@ -72,9 +72,7 @@ def ask_confirmation(
     timeout_seconds: Timeout = 120.0,
 ) -> Confirmation:
     """Ask the user a yes or no question in a dialog, and wait for the answer."""
-    return Confirmation(
-        confirmed=macos.dialog.confirm(message, title=title, ok=ok, cancel=cancel, timeout=timeout_seconds)
-    )
+    return Confirmation(confirmed=macos.dialog.confirm(message, title=title, ok=ok, cancel=cancel, timeout=timeout_seconds))
 
 
 def ask_text(
@@ -84,7 +82,9 @@ def ask_text(
         Field(description="Text the field starts with. Not a secret: other processes of the user can see it."),
     ] = "",
     title: Title = None,
-    hidden: Annotated[bool, Field(description="True to show dots instead of what's typed, for a password.")] = False,
+    hidden: Annotated[
+        bool, Field(description="True to show dots instead of what's typed, for a password.")
+    ] = False,
     timeout_seconds: Timeout = 120.0,
 ) -> TextAnswer:
     """
@@ -104,9 +104,7 @@ def ask_choice(
     timeout_seconds: Timeout = 120.0,
 ) -> Choice:
     """Let the user pick one option from a list, in a dialog. It waits until they answer, or the time runs out."""
-    return Choice(
-        choice=macos.dialog.choose(options, prompt=prompt, default=default, title=title, timeout=timeout_seconds)
-    )
+    return Choice(choice=macos.dialog.choose(options, prompt=prompt, default=default, title=title, timeout=timeout_seconds))
 
 
 def ask_for_files(

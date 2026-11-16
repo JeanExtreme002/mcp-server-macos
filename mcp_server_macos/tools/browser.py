@@ -18,15 +18,10 @@ Browser = Annotated[
     ),
 ]
 Window = Annotated[int, Field(description="The tab's window, as list_browser_tabs gives it.")]
-Index = Annotated[
-    int, Field(description="The tab's position in its window, from 1, as list_browser_tabs gives it.", ge=1)
-]
+Index = Annotated[int, Field(description="The tab's position in its window, from 1, as list_browser_tabs gives it.", ge=1)]
 Url = Annotated[
     str,
-    Field(
-        description="The address, with its scheme: 'https://example.com', or 'file:///...' for a local page.",
-        min_length=1,
-    ),
+    Field(description="The address, with its scheme: 'https://example.com', or 'file:///...' for a local page.", min_length=1),
 ]
 
 
@@ -115,10 +110,7 @@ def close_browser_tab(window: Window, index: Index, app: Browser = None) -> str:
 def run_javascript_in_browser(
     script: Annotated[
         str,
-        Field(
-            description="The JavaScript to run, such as 'document.title'. Its last expression is the result.",
-            min_length=1,
-        ),
+        Field(description="The JavaScript to run, such as 'document.title'. Its last expression is the result.", min_length=1),
     ],
     app: Browser = None,
 ) -> ScriptResult:
@@ -126,8 +118,9 @@ def run_javascript_in_browser(
     Run JavaScript in the current tab of a browser, and return its result: to read a page, or act on
     it. It runs as the page, with the user's session on that site: it can read what the page shows and
     do what the user could there, such as sending a form. An error the script raises comes back as one,
-    with the page's message. Its let, const and class declarations stay in the script. The browser must
-    allow it, once, in its own menu.
+    with the page's message, but a syntax error, which keeps it from running at all, still gives null.
+    It runs inside a block: its let, const and class declarations don't stay in the page for a later
+    call, and a leading 'use strict' isn't a directive. The browser must allow it, once, in its own menu.
     """
     return ScriptResult(result=macos.browser.run_js(script, app))
 
@@ -136,17 +129,11 @@ def register(server: MCPServer) -> None:
     # The browsers are asked through AppleScript, which macOS asks the user to allow, the first time.
     add_tool(server, list_browser_tabs, title="List the browser's tabs", annotations=READ_ONLY, permission=AUTOMATION)
     add_tool(server, get_current_tab, title="Get the current browser tab", annotations=READ_ONLY, permission=AUTOMATION)
-    add_tool(
-        server, open_in_browser, title="Open an address in the browser", annotations=OPEN_ENDED, permission=AUTOMATION
-    )
-    add_tool(
-        server, switch_to_browser_tab, title="Switch to a browser tab", annotations=REPLACING, permission=AUTOMATION
-    )
+    add_tool(server, open_in_browser, title="Open an address in the browser", annotations=OPEN_ENDED, permission=AUTOMATION)
+    add_tool(server, switch_to_browser_tab, title="Switch to a browser tab", annotations=REPLACING, permission=AUTOMATION)
     # Reloading fetches the page again, and may send a form it posted again: as open-ended as navigating.
     add_tool(server, reload_browser_tab, title="Reload a browser tab", annotations=OPEN_ENDED, permission=AUTOMATION)
-    add_tool(
-        server, navigate_browser_tab, title="Load an address in a tab", annotations=OPEN_ENDED, permission=AUTOMATION
-    )
+    add_tool(server, navigate_browser_tab, title="Load an address in a tab", annotations=OPEN_ENDED, permission=AUTOMATION)
     add_tool(server, close_browser_tab, title="Close a browser tab", annotations=DESTRUCTIVE, permission=AUTOMATION)
     add_tool(
         server,
