@@ -16,11 +16,15 @@ from .._registry import ADDITIVE, LONGEST_WAIT, OPEN_ENDED, READ_ONLY, REPLACING
 
 App = Annotated[
     Optional[str],
-    Field(description="The app, by name, bundle identifier or path. The one in front by default."),
+    Field(description="The app, by name, bundle identifier or path. The app in front by default."),
 ]
 ElementId = Annotated[
     int,
-    Field(description="The element's id, from get_ui_elements or find_ui_elements.", ge=1),
+    Field(
+        description="The element's id, from get_ui_elements, find_ui_elements or another tool of these that "
+        "returned it.",
+        ge=1,
+    ),
 ]
 
 #: How many elements the ids reach back to: the oldest are forgotten, as the app has changed since anyway.
@@ -72,44 +76,62 @@ def _empty(value: Any) -> bool:
 
 
 class UIElement(_Compact):
-    """Something an app shows, in points from the main display's top-left. Empty fields are left out."""
+    """
+    One thing an app shows. Positions are in points from the top-left of the main display, as click and
+    move_pointer take them. A field left out is empty: no name, no value, not disabled, no position on
+    screen (an app may not say where an element is: press_ui_element still reaches it).
+    """
 
-    id: int = Field(description="For the other ui tools.")
-    role: str = Field(description="'button', 'text field', 'link', 'check box', 'menu item'...")
-    name: Optional[str] = Field(default=None, description="Its label or text.")
-    value: Union[str, float, bool, None] = Field(default=None, description="A field's text, a slider's position...")
-    x: Optional[int] = Field(default=None, description="Its middle, where a click lands.")
-    y: Optional[int] = Field(default=None, description="Its middle.")
-    width: Optional[int] = Field(default=None, description="Width.")
-    height: Optional[int] = Field(default=None, description="Height.")
-    checked: Optional[bool] = Field(default=None, description="Whether a checkbox or switch is on.")
-    disabled: bool = Field(default=False, description="Dimmed: can't be used now.")
-    focused: bool = Field(default=False, description="Has the keyboard focus.")
-    selected: bool = Field(default=False, description="Chosen: a row, a tab.")
-    actions: List[str] = Field(default_factory=list, description="More actions, for perform_ui_action.")
+    id: int = Field(description="Its id, for press_ui_element, set_ui_element_value and the other tools.")
+    role: str = Field(
+        description="What it is: 'button', 'text field', 'link', 'check box', 'pop up button', 'menu item', "
+        "'search field', 'close button', 'static text'..."
+    )
+    name: Optional[str] = Field(default=None, description="What a person would call it: its label or its text.")
+    value: Union[str, float, bool, None] = Field(
+        default=None,
+        description="What it holds: a field's text, a slider's position, a pop up button's choice. Left out "
+        "when it holds nothing, or the same as its name.",
+    )
+    x: Optional[int] = Field(default=None, description="Its middle, across: where a click lands.")
+    y: Optional[int] = Field(default=None, description="Its middle, down.")
+    width: Optional[int] = Field(default=None, description="Its width.")
+    height: Optional[int] = Field(default=None, description="Its height.")
+    checked: Optional[bool] = Field(
+        default=None, description="For a checkbox, a radio button or a switch, whether it's on."
+    )
+    disabled: bool = Field(default=False, description="Whether it's dimmed, and can't be used now.")
+    focused: bool = Field(default=False, description="Whether what's typed goes to it.")
+    selected: bool = Field(default=False, description="Whether it's chosen: a row, a tab.")
+    actions: List[str] = Field(
+        default_factory=list,
+        description="What perform_ui_action can do with it beyond a press, such as 'AXShowMenu' or 'AXIncrement'.",
+    )
 
 
 class UIElements(BaseModel):
     """What an app shows."""
 
     app: str = Field(description="The app's name.")
-    elements: List[UIElement] = Field(description="Top to bottom.")
-    note: Optional[str] = Field(default=None, description="About the list, when there's something to say.")
+    elements: List[UIElement] = Field(description="Top to bottom, as a person reads the window.")
+    note: Optional[str] = Field(default=None, description="Something to know about the list, when there is.")
 
 
 class UIElementFound(BaseModel):
     """An element, or none."""
 
-    element: Optional[UIElement] = Field(description="Null when there's none.")
+    element: Optional[UIElement] = Field(description="The element. Null when there's none.")
 
 
 class MenuItem(_Compact):
     """An item of an app's menus."""
 
-    path: str = Field(description="For click_menu_item: 'File > Export > PDF…'.")
-    shortcut: Optional[str] = Field(default=None, description="As press_keys takes it: 'cmd+shift+s'.")
-    disabled: bool = Field(default=False, description="Dimmed: can't be chosen now.")
-    checked: bool = Field(default=False, description="Shows a check mark.")
+    path: str = Field(description="Where it is, menu by menu, for click_menu_item: 'File > Export > PDF…'.")
+    shortcut: Optional[str] = Field(
+        default=None, description="Its keyboard shortcut, as press_keys takes it: 'cmd+shift+s'."
+    )
+    disabled: bool = Field(default=False, description="Whether it's dimmed, and can't be chosen now.")
+    checked: bool = Field(default=False, description="Whether it shows a check mark, as a setting that's on.")
 
 
 # Actions every control has, which press_ui_element does or which mean nothing to a model.
@@ -177,15 +199,19 @@ def get_ui_elements(
     app: App = None,
     include_text: Annotated[
         bool,
-        Field(description="Also list text, headings and images, not only controls."),
+        Field(description="Also list what's there to be read (text, headings, images), not only the controls."),
     ] = False,
     max_elements: Annotated[int, Field(description="The most elements to list.", ge=1, le=2000)] = 300,
 ) -> UIElements:
     """
-    List what an app shows (buttons, fields, links, checkboxes, tabs, menus), each with an id for the other
-    ui tools: to see an app before acting on it, rather than a screenshot. Only what's visible: the window
-    in front and its panels, or only the menu, dialog or sheet that's open. Reads web pages too. Games and
-    a few apps show little: take a screenshot then.
+    List what an app shows on screen: its buttons, text fields, links, checkboxes, tabs and menus, each
+    with an id, its name, its value and where it is. Use it to see an app before acting on it, rather
+    than a screenshot: then press_ui_element, set_ui_element_value or click_menu_item with what it gives.
+
+    Only what can be seen is listed: the window in front, with the panels over it. When a menu, a dialog
+    or a sheet (a save panel) is open, only it is, as nothing else can be used until it closes. Web pages
+    are read too, in Safari, Chrome and Electron apps. Some apps (games, a few cross-platform ones) show
+    little or nothing this way: take a screenshot then.
     """
     found = macos.ui.elements(app, controls_only=not include_text)
     return _listed(app, found, max_elements, "Nothing to use was found: the app may not show its controls to "
@@ -195,53 +221,58 @@ def get_ui_elements(
 def find_ui_elements(
     name: Annotated[
         Optional[str],
-        Field(description="A part of its name or text, in any case."),
+        Field(description="A part of its name, label, text, placeholder or tooltip, in any case."),
     ] = None,
     role: Annotated[
         Optional[str],
-        Field(description="'button', 'text field', 'link', 'search field'..."),
+        Field(description="What it is: 'button', 'text field', 'link', 'check box', 'menu item', 'search field'..."),
     ] = None,
     app: App = None,
 ) -> UIElements:
     """
-    Find elements on screen by name, role or both: the 'Send' button, the search field. Exact names come
-    first ('Save' before "Don't Save"), then top to bottom. Finds text too.
+    Find the elements on screen with a name, a role, or both: the 'Send' button, the search field. Those
+    named exactly so come first ('Save' before "Don't Save"), then the others, top to bottom. Text is
+    found too, not only controls. Give a name, a role, or both.
     """
     found = macos.ui.find(app, name=name, role=role)
     return _listed(app, found, 200, "None is on screen: get_ui_elements lists what is.")
 
 
 def wait_for_ui_element(
-    name: Annotated[Optional[str], Field(description="A part of its name or text.")] = None,
-    role: Annotated[Optional[str], Field(description="'button', 'text field'...")] = None,
+    name: Annotated[Optional[str], Field(description="A part of its name, label or text, in any case.")] = None,
+    role: Annotated[Optional[str], Field(description="What it is: 'button', 'text field', 'link'...")] = None,
     app: App = None,
     timeout_seconds: Annotated[
-        float, Field(description="At most, in seconds.", gt=0, le=LONGEST_WAIT)
+        float, Field(description="How long to wait at most, in seconds.", gt=0, le=LONGEST_WAIT)
     ] = 10.0,
 ) -> UIElementFound:
-    """Wait until an element shows up (a page loaded, a dialog opened) and return it; null after the timeout."""
+    """
+    Wait until an element shows up (a page loaded, a dialog opened, a button enabled), and return it; null
+    if it doesn't within the timeout. An app that isn't running yet is waited for too.
+    """
     if name is None and role is None:
         raise ValueError("give a name, a role, or both")
     return _found(macos.ui.wait_for(app, name=name, role=role, timeout=timeout_seconds))
 
 
 def get_focused_ui_element() -> UIElementFound:
-    """Get the element keystrokes go to now, in whichever app."""
+    """Get the element keystrokes go to now (a text field, a list), in whichever app. Null when there's none."""
     return _found(macos.ui.focused())
 
 
 def get_ui_element_at(
-    x: Annotated[float, Field(description="In points from the main display's left.")],
-    y: Annotated[float, Field(description="In points from its top.")],
+    x: Annotated[float, Field(description="Across, in points from the left of the main display.")],
+    y: Annotated[float, Field(description="Down, in points from the top of the main display.")],
 ) -> UIElementFound:
-    """Get the element a click at this point would reach, in whichever app."""
+    """Get the element at a point of the screen, in whichever app shows it there: what a click there would reach."""
     return _found(macos.ui.at(x, y))
 
 
 def press_ui_element(id: ElementId) -> str:
     """
-    Press an element as a click would (a button, a link, a checkbox, a tab), without moving the pointer.
-    What it does is the app's: a button may send, delete or buy.
+    Use an element as a click would: press a button, follow a link, toggle a checkbox, choose a tab or a
+    menu item. It's done through Accessibility: the pointer doesn't move, and the window needn't be in
+    front. What it does is the app's: a button may send, delete or buy.
     """
     element = _seen.get(id)
     element.press()
@@ -253,7 +284,10 @@ def click_ui_element(
     button: Annotated[Literal["left", "right"], Field(description="'right' opens a context menu.")] = "left",
     count: Annotated[int, Field(description="2 double-clicks: opens a file in a list.", ge=1, le=3)] = 1,
 ) -> str:
-    """Click an element with the mouse: for a double or right click, or what press_ui_element can't press."""
+    """
+    Click an element's middle with the mouse, bringing its app to the front: for a double-click, a right
+    click, or an element press_ui_element doesn't work on.
+    """
     element = _seen.get(id)
     element.click(button=button, count=count)
     return "Clicked {}.".format(_said(element))
@@ -263,17 +297,20 @@ def set_ui_element_value(
     id: ElementId,
     value: Annotated[
         Union[str, float, bool],
-        Field(description="A field's text (replacing it), a slider's number."),
+        Field(description="Text for a text field (it replaces what's there), a number for a slider."),
     ],
 ) -> str:
-    """Set a field's text or a slider's position. If refused or unnoticed, focus_ui_element and type_text instead."""
+    """
+    Set what an element holds: a text field's text, replacing it, or a slider's position. When the app
+    refuses, or a web form doesn't notice, focus_ui_element and type_text instead.
+    """
     element = _seen.get(id)
     element.set_value(value)
     return "Set {}.".format(_said(element))
 
 
 def focus_ui_element(id: ElementId) -> str:
-    """Give an element the keyboard focus, its app brought to the front, for type_text or press_keys."""
+    """Bring an element's app to the front and give it the keyboard focus, for type_text or press_keys to go to it."""
     element = _seen.get(id)
     element.focus()
     return "Focused {}.".format(_said(element))
@@ -284,19 +321,23 @@ def perform_ui_action(
     action: Annotated[
         str,
         Field(
-            description="One of its actions: 'AXShowMenu', 'AXIncrement', 'AXDecrement'...",
+            description="One of the element's actions: 'AXShowMenu' opens its menu, 'AXIncrement' and "
+            "'AXDecrement' step a slider or a stepper, 'AXConfirm', 'AXCancel', 'AXPick'.",
             min_length=1,
         ),
     ],
 ) -> str:
-    """Do one of an element's actions, as its actions field lists them."""
+    """Ask an element to do one of its actions, as its actions field lists them."""
     element = _seen.get(id)
     element.perform(action)
     return "Did {} on {}.".format(action, _said(element))
 
 
 def read_ui_element_text(id: ElementId) -> str:
-    """Read all the text an element holds, scrolled out of view included: a long text area, a message."""
+    """
+    Read all the text an element holds, its own and what's in it, what's scrolled out of view included: a
+    long text area, a message, a dialog.
+    """
     return str(_seen.get(id).text())
 
 
@@ -304,10 +345,13 @@ def list_menu_items(
     app: App = None,
     menu: Annotated[
         Optional[str],
-        Field(description="Only this menu, such as 'File'. Every one by default."),
+        Field(description="Only this menu of the menu bar, such as 'File' or 'View'. Every menu by default."),
     ] = None,
 ) -> List[MenuItem]:
-    """List an app's menu items and their shortcuts: what it can do, beyond what's on screen."""
+    """
+    List the items of an app's menus, with their keyboard shortcuts: what the app can do, including what
+    no button on screen shows. The app needn't be in front. click_menu_item chooses one.
+    """
     items = macos.ui.menu_items(app)
     if menu is not None:
         wanted = menu.casefold().strip()
@@ -326,13 +370,17 @@ def click_menu_item(
     path: Annotated[
         str,
         Field(
-            description="Menu, then item, by '>': 'Format > Font > Bold'. '...' stands for '…'; any case.",
+            description="The menu, then the item, through any submenus, separated by '>': 'File > Save As…', "
+            "'Format > Font > Bold'. '...' stands for '…', and case doesn't matter.",
             min_length=3,
         ),
     ],
     app: App = None,
 ) -> str:
-    """Choose an app's menu item, bringing the app to the front. What it does is the app's: it may delete or quit."""
+    """
+    Choose an item of an app's menus, as a click on it would. The app comes to the front first, since its
+    menus act on its window in front. What it does is the app's: an item may delete, send or quit.
+    """
     macos.ui.click_menu_item(path, app=app)
     return "Chose {}.".format(path)
 
