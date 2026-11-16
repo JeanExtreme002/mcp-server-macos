@@ -8,13 +8,13 @@
     "source": "github"
   },
   "websiteUrl": "https://github.com/JeanExtreme002/mcp-server-macos#readme",
-  "version": "0.1.1",
+  "version": "1.0.0",
   "packages": [
     {
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "mcp-server-macos",
-      "version": "0.1.1",
+      "version": "1.0.0",
       "runtimeHint": "uvx",
       "transport": {
         "type": "stdio"
