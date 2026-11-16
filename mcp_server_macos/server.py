@@ -27,8 +27,8 @@ INSTRUCTIONS = (
 #: Added to the instructions of a server started with some of the toolsets only.
 ON_DEMAND_INSTRUCTIONS = (
     " Only some of the tools are listed at first, and there's one for most of what a Mac does: files, PDFs, "
-    "images, videos, audio, apps, windows, what apps show (their buttons, fields and menus, to use them without a "
-    "screenshot), the screen, the keyboard and mouse, the settings. For a task on this "
+    "images, videos, audio, apps, windows, the screen, the keyboard and mouse, the settings. To do something in "
+    "an app, get_ui_elements lists its buttons, fields and menus, to use by id: rather than a screenshot. For a task on this "
     "Mac, look for a tool here before writing a script or installing a library: enable_toolsets lists every "
     "toolset with the names of its tools, and adds the toolset a task needs; find_tools searches every tool by "
     "what it does."

@@ -9,6 +9,7 @@ import anyio
 import macos
 import pytest
 from mcp import Client
+from mcp.server.mcpserver import MCPServer
 
 from mcp_server_macos import _on_demand, create_server, tools
 from mcp_server_macos._registry import READ_ONLY
@@ -67,7 +68,7 @@ async def test_enabling_a_toolset_lists_its_tools_and_says_which() -> None:
 
     # In the toolsets' own order; notifications was enabled already, so only volume's tools are added.
     assert result.structured_content == {
-        "toolsets": [name for name in tools.TOOLSETS if name in {"clipboard", "dialog", "notifications", "volume"}],
+        "toolsets": [name for name in tools.TOOLSETS if name in {*_on_demand.CORE, "volume"}],
         "added": ["get_volume", "set_volume", "set_muted"],
         "if_missing": _on_demand.IF_MISSING,
     }
@@ -222,5 +223,9 @@ async def test_other_clients_and_toolsets_named_by_the_user_keep_the_core() -> N
     async with Client(create_server(list(_on_demand.CORE)), client_info=claude_code) as client:
         named = set(await definitions(client))
 
-    assert len(core) < 20 and "decrypt_pdf" not in core
+    # The core's toolsets and the two tools that reach the others: nothing more.
+    alone = MCPServer("core")
+    tools.register(alone, _on_demand.CORE)
+    expected = {tool.name for tool in alone._tool_manager.list_tools()} | {"find_tools", "enable_toolsets"}
+    assert core == expected and "get_ui_elements" in core and "decrypt_pdf" not in core
     assert named == core  # named by the user: their choice, whichever the client
