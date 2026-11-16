@@ -88,10 +88,16 @@ happens on the Mac is fixed in pymacos, and so is a missing feature.
 
 ## Toolsets
 
-Each module of `mcp_server_macos/tools` is a toolset, named after it. The server offers them all by
-default, and only the ones named when started with `--toolsets system,notifications` (or with the
-`MCP_SERVER_MACOS_TOOLSETS` environment variable), for a client or a user that doesn't want every tool
-listed. A new module needs nothing more than being in `MODULES` to become one.
+Each module of `mcp_server_macos/tools` is a toolset, named after it. A new module needs nothing more
+than being in `MODULES` to become one.
+
+The command starts with a few toolsets (`CORE`, in `mcp_server_macos/_on_demand.py`), so a client isn't
+sent every tool before its first question. Two tools reach the others: `find_tools` searches every tool,
+enabled or not, and `enable_toolsets` adds toolsets while the server runs, telling the client its list
+changed. A tool added that way is defined exactly as it is with every toolset, schemas and annotations
+included: a test checks it for every tool. `--toolsets system,notifications` (or the
+`MCP_SERVER_MACOS_TOOLSETS` environment variable) starts with others, and `--toolsets all` with every one,
+as `create_server()` does from Python.
 
 ## Tests
 

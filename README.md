@@ -52,6 +52,9 @@ No uv? `pip install mcp-server-macos`, then use `mcp-server-macos` as the comman
 
 Requires macOS and Python 3.10 or newer.
 
+It starts light, and your assistant turns on the groups of tools a task needs, so they don't fill its
+context before the first question. To have every tool listed from the start, add `--toolsets all`.
+
 ## Permissions
 
 macOS gives privacy permissions to the app that runs the server (Claude Desktop, your terminal, your

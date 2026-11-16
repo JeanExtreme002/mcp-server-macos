@@ -137,12 +137,18 @@ def add_tool(
         description=description,
         annotations=annotations,
     )
-    # The schemas the client is sent, without the title pydantic gives every argument and every model:
-    # an annotation, which never changes what validates, and an eighth of what the tools cost a client.
-    # The SDK validates arguments and results with its own models, not with these.
-    registered = server._tool_manager.get_tool(function.__name__)
+    tidy(server, function.__name__)
+
+
+def tidy(server: MCPServer, name: str) -> None:
+    """
+    The schemas of tool ``name`` as the client is sent them: without the title pydantic gives every
+    argument and every model, an annotation that never changes what validates, and an eighth of what the
+    tools cost a client. The SDK validates arguments and results with its own models, not with these.
+    """
+    registered = server._tool_manager.get_tool(name)
     if registered is None:  # pragma: no cover - the SDK keeps what it was given
-        raise RuntimeError("the tool {!r} wasn't registered".format(function.__name__))
+        raise RuntimeError("the tool {!r} wasn't registered".format(name))
     registered.parameters = without_titles(registered.parameters)
     if registered.fn_metadata.output_schema is not None:
         registered.fn_metadata.output_schema = without_titles(registered.fn_metadata.output_schema)
