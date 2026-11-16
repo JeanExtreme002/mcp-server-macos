@@ -193,4 +193,8 @@ Publishing the release starts the `Publish to PyPI` workflow: it refuses a
 tag that doesn't match `__version__` or isn't on `main`, builds the package
 once, runs the whole suite (live tests included) against that build, and only
 then uploads it. Once the package is on PyPI, it lists the release in the
-[MCP Registry](https://registry.modelcontextprotocol.io), from `server.json`.
+[MCP Registry](https://registry.modelcontextprotocol.io), from `server.json`, and attaches
+`mcp-server-macos.mcpb` to the release: the bundle Claude Desktop installs in one click, built by
+`scripts/build_mcpb.py`. It holds no code of the server, only a `pyproject.toml` asking for this
+version from PyPI, which is why it's built after the upload. `make clean` removes what the script
+leaves in `build/` and `dist/`.
