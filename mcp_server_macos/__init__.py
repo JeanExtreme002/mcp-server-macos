@@ -12,7 +12,7 @@ Run it with the ``mcp-server-macos`` command, or ``python -m mcp_server_macos``.
     create_server().run("stdio")
 """
 
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 
 from .server import create_server, main
 
