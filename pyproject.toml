@@ -69,6 +69,7 @@ mcp-server-macos = "mcp_server_macos.server:main"
 Homepage = "https://github.com/JeanExtreme002/mcp-server-macos"
 Source = "https://github.com/JeanExtreme002/mcp-server-macos"
 Issues = "https://github.com/JeanExtreme002/mcp-server-macos/issues"
+Changelog = "https://github.com/JeanExtreme002/mcp-server-macos/releases"
 Funding = "https://github.com/sponsors/JeanExtreme002"
 
 [tool.mypy]
