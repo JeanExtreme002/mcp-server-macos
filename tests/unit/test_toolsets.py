@@ -91,9 +91,13 @@ def started(monkeypatch: pytest.MonkeyPatch) -> List[Optional[List[str]]]:
     """The toolsets main() created its server with, instead of running one."""
     asked: List[Optional[List[str]]] = []
 
-    def create(toolsets: Optional[List[str]] = None) -> MCPServer:
+    def create(toolsets: Optional[List[str]] = None, *, follow_client: bool = False) -> MCPServer:
         asked.append(toolsets)
+        following.append(follow_client)
         return create_server(toolsets)
+
+    following: List[bool] = []
+    monkeypatch.setattr(server, "_following", following, raising=False)
 
     monkeypatch.setattr(server, "create_server", create)
     monkeypatch.setattr(MCPServer, "run", lambda self, transport: None)
@@ -102,10 +106,14 @@ def started(monkeypatch: pytest.MonkeyPatch) -> List[Optional[List[str]]]:
 
 
 def test_command_starts_with_the_core_toolsets(started: List[Optional[List[str]]]) -> None:
-    # The others are found and enabled as a task needs them: a client isn't sent every tool at first.
+    # The others are found and enabled as a task needs them: a client isn't sent every tool at first. Left
+    # to the server, the toolsets follow the client (every one for a client that defers tools itself);
+    # named, they don't.
     server.main([])
+    server.main(["--toolsets", "pdf"])
 
-    assert started == [list(_on_demand.CORE)]
+    assert started == [list(_on_demand.CORE), ["pdf"]]
+    assert server._following == [True, False]  # type: ignore[attr-defined]
 
 
 def test_command_offers_every_toolset_from_the_start_when_asked(

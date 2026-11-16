@@ -30,6 +30,12 @@ if TYPE_CHECKING:
 else:
     ToolsetName = Literal[tuple(tools.TOOLSETS)]
 
+#: The clients that defer a server's tools themselves: they show the model each tool's name, and load what
+#: it searches for. Every toolset is listed for them from the start, which costs them the names only, as
+#: the model looks for a tool by what it's called: from the core, it saw no name telling it a tool exists
+#: (asked to decrypt a PDF, it wrote a script, every time, where with every toolset it found decrypt_pdf).
+CLIENTS_THAT_DEFER = ("claude-code",)
+
 
 def summary(name: str) -> str:
     """What toolset ``name`` is for, in a line: its module's docstring, without the pymacos module it's from."""
@@ -68,10 +74,22 @@ IF_MISSING = (
 class OnDemand:
     """The toolsets of one server: those enabled, and the two tools that find and enable the others."""
 
-    def __init__(self, server: MCPServer, enabled: List[str]) -> None:
+    def __init__(self, server: MCPServer, enabled: List[str], *, follow_client: bool = False) -> None:
         self.server = server
         self.enabled = list(enabled)
+        # Whether the toolsets were left to the server (the command's default), rather than named: then a
+        # client in CLIENTS_THAT_DEFER gets them all.
+        self.follow_client = follow_client
         self._catalog: Optional[Dict[str, List[Any]]] = None
+
+    def for_client(self, name: Optional[str]) -> None:
+        """Before the client is sent the tools: every toolset for a client that defers them itself."""
+        if self.follow_client and name in CLIENTS_THAT_DEFER:
+            self.follow_client = False
+            missing = [toolset for toolset in tools.TOOLSETS if toolset not in self.enabled]
+            if missing:
+                tools.register(self.server, missing)
+                self.enabled += missing
 
     def catalog(self) -> Dict[str, List[Any]]:
         """Every toolset's tools, by toolset: built once, on a server of its own that nobody is sent."""
@@ -88,7 +106,12 @@ class OnDemand:
         """Add ``find_tools`` and ``enable_toolsets`` to the server, and say it may change its tools."""
         # Added as they are, not through add_tool: they don't call pymacos, so there's nothing of its to
         # translate, and enable_toolsets is a coroutine, which add_tool's wrapper would call on a worker.
-        groups = "\n".join("- {}: {}".format(name, summary(name)) for name in tools.TOOLSETS)
+        # Every tool's name, by toolset: a client that finds tools by searching their descriptions (Claude
+        # Code does) finds "decrypt_pdf" for "decrypt a PDF" here, where the toolset's summary may not say it.
+        groups = "\n".join(
+            "- {}: {}. Tools: {}".format(name, summary(name), ", ".join(tool.name for tool in self.catalog()[name]))
+            for name in tools.TOOLSETS
+        )
         for function, title, description in (
             (self.find_tools, "Find a tool", inspect.getdoc(self.find_tools)),
             (
