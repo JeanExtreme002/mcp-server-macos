@@ -69,7 +69,10 @@ async def test_enabling_a_toolset_lists_its_tools_and_says_which() -> None:
     assert result.structured_content == {
         "toolsets": [name for name in tools.TOOLSETS if name in {"clipboard", "dialog", "notifications", "volume"}],
         "added": ["get_volume", "set_volume", "set_muted"],
+        "if_missing": _on_demand.IF_MISSING,
     }
+    # For a client that doesn't refresh its list: the model can tell the user what to change.
+    assert "--toolsets all" in _on_demand.IF_MISSING
     assert {"get_volume", "set_volume", "set_muted"} <= listed
 
 

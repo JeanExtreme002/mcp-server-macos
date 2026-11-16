@@ -53,6 +53,16 @@ class Enabled(BaseModel):
 
     toolsets: List[str] = Field(description="Every toolset enabled now.")
     added: List[str] = Field(description="The tools this call added: callable now.")
+    if_missing: str = Field(description="What to do if the tools added don't show up in the list of tools.")
+
+
+# For a client that doesn't refresh its list of tools when told: the model is told how to get them, so
+# the user is asked to change a setting rather than left without the tools, and without a reason.
+IF_MISSING = (
+    "If these tools don't show up in your list of tools, the client doesn't refresh it when the server "
+    "says it changed: ask the user to start the server with --toolsets all (every tool listed from the "
+    "start), or with --toolsets naming the toolsets they need, then restart the client."
+)
 
 
 class OnDemand:
@@ -161,4 +171,6 @@ class OnDemand:
             # 2026-07-28 on), or the notification of the versions before, which the SDK drops on the newer.
             await ctx.notify_tools_changed()
             await ctx.request_context.session.send_tool_list_changed()
-        return Enabled(toolsets=[name for name in tools.TOOLSETS if name in self.enabled], added=added)
+        return Enabled(
+            toolsets=[name for name in tools.TOOLSETS if name in self.enabled], added=added, if_missing=IF_MISSING
+        )
