@@ -228,8 +228,9 @@ def find_ui_elements(
     app: App = None,
 ) -> UIElements:
     """
-    Find the elements on screen with a name, a role, or both, top to bottom: the 'Send' button, the
-    search field. Text is found too, not only controls. Give a name, a role, or both.
+    Find the elements on screen with a name, a role, or both: the 'Send' button, the search field. Those
+    named exactly so come first ('Save' before "Don't Save"), then the others, top to bottom. Text is
+    found too, not only controls. Give a name, a role, or both.
     """
     found = macos.ui.find(app, name=name, role=role)
     return _listed(app, found, 200, "None is on screen: get_ui_elements lists what is.")
