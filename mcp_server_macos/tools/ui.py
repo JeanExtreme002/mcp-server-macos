@@ -78,7 +78,8 @@ def _empty(value: Any) -> bool:
 class UIElement(_Compact):
     """
     One thing an app shows. Positions are in points from the top-left of the main display, as click and
-    move_pointer take them. A field left out is empty: no name, no value, not disabled.
+    move_pointer take them. A field left out is empty: no name, no value, not disabled, no position on
+    screen (an app may not say where an element is: press_ui_element still reaches it).
     """
 
     id: int = Field(description="Its id, for press_ui_element, set_ui_element_value and the other tools.")
@@ -92,10 +93,10 @@ class UIElement(_Compact):
         description="What it holds: a field's text, a slider's position, a pop up button's choice. Left out "
         "when it holds nothing, or the same as its name.",
     )
-    x: int = Field(description="Its middle, across: where a click lands.")
-    y: int = Field(description="Its middle, down.")
-    width: int = Field(description="Its width.")
-    height: int = Field(description="Its height.")
+    x: Optional[int] = Field(default=None, description="Its middle, across: where a click lands.")
+    y: Optional[int] = Field(default=None, description="Its middle, down.")
+    width: Optional[int] = Field(default=None, description="Its width.")
+    height: Optional[int] = Field(default=None, description="Its height.")
     checked: Optional[bool] = Field(
         default=None, description="For a checkbox, a radio button or a switch, whether it's on."
     )
@@ -153,8 +154,9 @@ def _spoken(role: str) -> str:
 
 
 def _described(element: Any) -> UIElement:
-    x, y, width, height = element.frame or (0, 0, 0, 0)
-    center_x, center_y = element.center or (x, y)
+    # Left out when the app doesn't say where it is (the focused element of a few apps): 0, 0 would be a place.
+    center_x, center_y = element.center or (None, None)
+    width, height = element.frame[2:] if element.frame else (None, None)
     value = element.value
     if isinstance(value, str) and (not value.strip() or value.strip() == element.name):
         value = None
@@ -353,10 +355,11 @@ def list_menu_items(
     items = macos.ui.menu_items(app)
     if menu is not None:
         wanted = menu.casefold().strip()
-        items = [item for item in items if item.path[0].casefold() == wanted]
-        if not items:
-            menus = list(dict.fromkeys(item.path[0] for item in macos.ui.menu_items(app)))
+        chosen = [item for item in items if item.path[0].casefold() == wanted]
+        if not chosen:  # the menus there are, from the walk just done: another would cost as much again
+            menus = list(dict.fromkeys(item.path[0] for item in items))
             raise LookupError("no menu {!r}: the menus are {}".format(menu, ", ".join(menus)))
+        items = chosen
     return [
         MenuItem(path=" > ".join(item.path), shortcut=item.shortcut, disabled=not item.enabled, checked=item.checked)
         for item in items

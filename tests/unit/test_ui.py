@@ -195,13 +195,25 @@ async def test_wait_focused_and_at(client: Client, mac: Recorder) -> None:
     assert neither.is_error and "give a name, a role, or both" in text(neither)
 
 
+async def test_an_element_without_a_place(client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch) -> None:
+    unplaced = FakeElement(mac, "AXTextField", "Body", frame=None, focused=True)
+    monkeypatch.setattr(macos.ui, "focused", lambda: unplaced)
+
+    found = await client.call_tool("get_focused_ui_element", {})
+
+    assert found.structured_content is not None
+    element = found.structured_content["element"]
+    # No position is left out, as 0, 0 would be a place a click could land.
+    assert element == {"id": element["id"], "role": "text field", "name": "Body", "focused": True}
+
+
 async def test_menus(client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPatch) -> None:
     items = [
         macos.ui.MenuItem(("File", "Save…"), True, False, "cmd+s"),
         macos.ui.MenuItem(("File", "Export", "PDF…"), False, False, None),
         macos.ui.MenuItem(("View", "Show Sidebar"), True, True, "ctrl+cmd+s"),
     ]
-    monkeypatch.setattr(macos.ui, "menu_items", lambda app=None: items)
+    monkeypatch.setattr(macos.ui, "menu_items", mac.function("menu_items", items))
 
     every = await client.call_tool("list_menu_items", {"app": "Preview"})
     view = await client.call_tool("list_menu_items", {"menu": "view"})
@@ -219,6 +231,7 @@ async def test_menus(client: Client, mac: Recorder, monkeypatch: pytest.MonkeyPa
         "result": [{"path": "View > Show Sidebar", "shortcut": "ctrl+cmd+s", "checked": True}]
     }
     assert missing.is_error and "no menu 'Window': the menus are File, View" in text(missing)
+    assert mac.names.count("menu_items") == 3  # a missing menu names the others from the walk already done
     assert text(chosen) == "Chose File > Save...."
     assert ("click_menu_item", ("File > Save...",), {"app": "Preview"}) in mac.calls
 
