@@ -14,8 +14,8 @@
   <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/v/mcp-server-macos.svg" alt="Newest PyPI version" /></a>
   <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/badge/python-3.10+-8A2BE2.svg" alt="Python 3.10 or newer" /></a>
   <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="Platform: macOS" />
-  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/status/mcp-server-macos.svg" alt="Development status" /></a>
-  <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/status/mcp-server-macos.svg?color=0e8a8a" alt="Development status" /></a>
+  <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg?color=yellow" alt="License" /></a>
 </p>
 
 <br>
