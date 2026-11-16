@@ -1,4 +1,4 @@
-<h1 align="center">🍎 mcp-server-macos</h1>
+<h1 align="center">mcp-server-macos</h1>
 
 <!-- mcp-name: io.github.JeanExtreme002/mcp-server-macos -->
 
