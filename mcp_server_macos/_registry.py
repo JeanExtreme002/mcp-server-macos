@@ -8,7 +8,7 @@ a missing permission included.
 
 import functools
 import inspect
-from typing import Any, Callable, Optional, TypeVar
+from typing import Any, Callable, Dict, Optional, TypeVar
 
 import macos
 from mcp.server.mcpserver import MCPServer
@@ -137,3 +137,34 @@ def add_tool(
         description=description,
         annotations=annotations,
     )
+    # The schemas the client is sent, without the title pydantic gives every argument and every model:
+    # an annotation, which never changes what validates, and an eighth of what the tools cost a client.
+    # The SDK validates arguments and results with its own models, not with these.
+    registered = server._tool_manager.get_tool(function.__name__)
+    if registered is None:  # pragma: no cover - the SDK keeps what it was given
+        raise RuntimeError("the tool {!r} wasn't registered".format(function.__name__))
+    registered.parameters = without_titles(registered.parameters)
+    if registered.fn_metadata.output_schema is not None:
+        registered.fn_metadata.output_schema = without_titles(registered.fn_metadata.output_schema)
+
+
+# The keywords of a JSON Schema whose value maps names to schemas: a "title" there is a name (an argument
+# called title), not the annotation.
+_NAMED_SCHEMAS = ("properties", "patternProperties", "$defs", "definitions")
+
+
+def without_titles(schema: Any) -> Any:
+    """``schema`` (a JSON Schema) without its ``title`` annotations, at any depth, other keywords kept."""
+    if isinstance(schema, list):
+        return [without_titles(item) for item in schema]
+    if not isinstance(schema, dict):
+        return schema
+    kept: Dict[str, Any] = {}
+    for keyword, value in schema.items():
+        if keyword == "title" and isinstance(value, str):
+            continue
+        if keyword in _NAMED_SCHEMAS and isinstance(value, dict):
+            kept[keyword] = {name: without_titles(named) for name, named in value.items()}
+        else:
+            kept[keyword] = without_titles(value)
+    return kept

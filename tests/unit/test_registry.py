@@ -3,6 +3,7 @@
 import importlib
 import threading
 import pkgutil
+from typing import Any, List
 
 import macos
 import pytest
@@ -12,7 +13,7 @@ from mcp.server.mcpserver.exceptions import ToolError
 
 from mcp_server_macos import _registry, tools
 from mcp_server_macos._permissions import APP, Permission
-from mcp_server_macos._registry import READ_ONLY, add_tool, translate_errors
+from mcp_server_macos._registry import READ_ONLY, add_tool, translate_errors, without_titles
 from tests.helpers import text
 
 pytestmark = pytest.mark.anyio
@@ -363,3 +364,60 @@ async def test_tool_on_the_main_thread_reports_errors_and_asks_for_permissions_l
     assert screen.prompts == 1
     assert refused.is_error and "ValueError: no such region" in text(refused)
     assert invalid.is_error
+
+
+def _titles(schema: Any, path: str = "") -> List[str]:
+    """Where ``schema`` holds a title annotation (not a property named title)."""
+    found: List[str] = []
+    if isinstance(schema, list):
+        for index, item in enumerate(schema):
+            found += _titles(item, "{}[{}]".format(path, index))
+    elif isinstance(schema, dict):
+        for keyword, value in schema.items():
+            if keyword == "title" and isinstance(value, str):
+                found.append(path or "/")
+            elif keyword in ("properties", "patternProperties", "$defs", "definitions") and isinstance(value, dict):
+                for name, named in value.items():
+                    found += _titles(named, "{}/{}/{}".format(path, keyword, name))
+            else:
+                found += _titles(value, "{}/{}".format(path, keyword))
+    return found
+
+
+@pytest.mark.anyio
+async def test_the_schemas_sent_have_no_title_annotations(client: Client) -> None:
+    # An annotation that never changes what validates, and an eighth of what the tool list costs a client.
+    for tool in (await client.list_tools()).tools:
+        assert _titles(tool.input_schema) == [], tool.name
+        assert _titles(tool.output_schema or {}) == [], tool.name
+
+
+@pytest.mark.anyio
+async def test_an_argument_named_title_is_kept(client: Client) -> None:
+    (tool,) = [tool for tool in (await client.list_tools()).tools if tool.name == "ask_choice"]
+
+    assert "title" in tool.input_schema["properties"]
+    assert tool.title  # the tool's own display title, which isn't part of a schema
+
+
+def test_without_titles_keeps_every_other_keyword() -> None:
+    schema = {
+        "title": "Arguments",
+        "type": "object",
+        "properties": {
+            "title": {"title": "Title", "type": "string", "minLength": 1},
+            "size": {"anyOf": [{"type": "integer", "title": "Pixels"}, {"type": "null"}], "default": None},
+        },
+        "$defs": {"title": {"title": "Model", "type": "object"}},
+        "required": ["title"],
+    }
+
+    assert without_titles(schema) == {
+        "type": "object",
+        "properties": {
+            "title": {"type": "string", "minLength": 1},
+            "size": {"anyOf": [{"type": "integer"}, {"type": "null"}], "default": None},
+        },
+        "$defs": {"title": {"type": "object"}},
+        "required": ["title"],
+    }
