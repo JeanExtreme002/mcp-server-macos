@@ -19,9 +19,11 @@ from pydantic import BaseModel, Field
 from . import tools
 from ._registry import READ_ONLY, tidy
 
-#: The toolsets the command starts with: light, and of use in almost any task (telling the user
-#: something, asking them, the clipboard). The others are a call to ``enable_toolsets`` away.
-CORE = ("clipboard", "dialog", "notifications")
+#: The toolsets the command starts with: of use in almost any task (telling the user something, asking
+#: them, the clipboard), and seeing and using what apps show, which a model asked to do something in an
+#: app would otherwise do from screenshots, never knowing there's a better way. The others are a call to
+#: ``enable_toolsets`` away.
+CORE = ("clipboard", "dialog", "notifications", "ui")
 
 # The toolsets' names as a Literal, so the schema lists them: built from the toolsets, which mypy can't
 # follow, so it's told a str.
