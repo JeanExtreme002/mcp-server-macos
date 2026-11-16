@@ -6,10 +6,14 @@ import pytest
 from mcp import Client
 from mcp.server.mcpserver import MCPServer
 
-from mcp_server_macos import create_server, server, tools
+from mcp_server_macos import _on_demand, create_server, server, tools
 from tests.unit.test_server import TOOLS
 
 pytestmark = pytest.mark.anyio
+
+
+# Added to a server started with some of the toolsets only, to find and enable the others.
+ON_DEMAND = {"find_tools", "enable_toolsets"}
 
 
 async def listed(running: MCPServer) -> Set[str]:
@@ -17,18 +21,26 @@ async def listed(running: MCPServer) -> Set[str]:
         return {tool.name for tool in (await client.list_tools()).tools}
 
 
+async def own(running: MCPServer) -> Set[str]:
+    """The tools of the toolsets a server was started with: without the two that enable the others."""
+    names = await listed(running)
+    assert ON_DEMAND <= names
+    return names - ON_DEMAND
+
+
 async def test_every_toolset_by_default() -> None:
+    # Every toolset from the start: nothing to enable, so no tool to enable it either.
     assert await listed(create_server()) == TOOLS
     assert await listed(create_server(None)) == TOOLS
     assert await listed(create_server(list(tools.TOOLSETS))) == TOOLS
 
 
 async def test_only_the_toolsets_asked_for() -> None:
-    assert await listed(create_server(["volume"])) == {"get_volume", "set_volume", "set_muted"}
-    assert await listed(create_server(["notifications"])) == {"send_notification", "check_notification_permission"}
-    assert await listed(create_server(["speech"])) == {"list_voices", "speak", "save_speech"}
-    assert await listed(create_server(["launch"])) == {"open_file_or_url"}
-    assert await listed(create_server(["volume", "notifications"])) == {
+    assert await own(create_server(["volume"])) == {"get_volume", "set_volume", "set_muted"}
+    assert await own(create_server(["notifications"])) == {"send_notification", "check_notification_permission"}
+    assert await own(create_server(["speech"])) == {"list_voices", "speak", "save_speech"}
+    assert await own(create_server(["launch"])) == {"open_file_or_url"}
+    assert await own(create_server(["volume", "notifications"])) == {
         "get_volume",
         "set_volume",
         "set_muted",
@@ -40,10 +52,10 @@ async def test_only_the_toolsets_asked_for() -> None:
 async def test_each_toolset_has_tools_and_together_they_have_them_all() -> None:
     together: Set[str] = set()
     for name in tools.TOOLSETS:
-        own = await listed(create_server([name]))
-        assert own, "the toolset {} has no tools".format(name)
-        assert not own & together, "a tool of {} is in another toolset too".format(name)
-        together |= own
+        mine = await own(create_server([name]))
+        assert mine, "the toolset {} has no tools".format(name)
+        assert not mine & together, "a tool of {} is in another toolset too".format(name)
+        together |= mine
 
     assert together == TOOLS
 
@@ -89,10 +101,21 @@ def started(monkeypatch: pytest.MonkeyPatch) -> List[Optional[List[str]]]:
     return asked
 
 
-def test_command_offers_every_toolset_by_default(started: List[Optional[List[str]]]) -> None:
+def test_command_starts_with_the_core_toolsets(started: List[Optional[List[str]]]) -> None:
+    # The others are found and enabled as a task needs them: a client isn't sent every tool at first.
     server.main([])
 
-    assert started == [None]
+    assert started == [list(_on_demand.CORE)]
+
+
+def test_command_offers_every_toolset_from_the_start_when_asked(
+    started: List[Optional[List[str]]], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    server.main(["--toolsets", "all"])
+    monkeypatch.setenv(server.TOOLSETS_VARIABLE, "all")
+    server.main([])
+
+    assert started == [None, None]
 
 
 def test_command_takes_the_toolsets(started: List[Optional[List[str]]]) -> None:
