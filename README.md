@@ -4,6 +4,20 @@
 
 <p align="center">
   <b>Let your AI assistant use your Mac.</b><br>
+  <i>An MCP server for Claude, Cursor and any other MCP client, built on <a href="https://github.com/JeanExtreme002/pymacos">pymacos</a>.</i>
+</p>
+
+<p align="center">
+  <a href="https://modelcontextprotocol.io"><img src="https://img.shields.io/badge/MCP-server-blue.svg" alt="MCP server" /></a>
+  <a href="https://github.com/JeanExtreme002/mcp-server-macos/actions/workflows/test.yml"><img src="https://img.shields.io/github/actions/workflow/status/JeanExtreme002/mcp-server-macos/test.yml?branch=main&amp;label=CI" alt="CI: tests on macOS and Linux" /></a>
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/v/mcp-server-macos.svg" alt="Newest PyPI version" /></a>
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/badge/python-3.10+-8A2BE2.svg" alt="Python 3.10 or newer" /></a>
+  <img src="https://img.shields.io/badge/platform-macOS-lightgrey.svg" alt="Platform: macOS" />
+  <a href="https://pypi.org/project/mcp-server-macos/"><img src="https://img.shields.io/pypi/status/mcp-server-macos.svg" alt="Development status" /></a>
+  <a href="https://github.com/JeanExtreme002/mcp-server-macos/blob/main/LICENSE"><img src="https://img.shields.io/pypi/l/mcp-server-macos.svg" alt="License" /></a>
+</p>
+
+<br>
 
 Add it in a minute, and your assistant stops explaining what to do on your Mac and starts doing it.
 Over 350 tools, for most of what a Mac does: ask in plain words, and it acts.
