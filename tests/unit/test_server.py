@@ -351,6 +351,20 @@ ANNOTATIONS = {
     # trackpad
     "get_trackpad_settings": READ_ONLY,
     "set_trackpad_settings": REPLACING,
+    # ui
+    "get_ui_elements": READ_ONLY,
+    "find_ui_elements": READ_ONLY,
+    "wait_for_ui_element": READ_ONLY,
+    "get_focused_ui_element": READ_ONLY,
+    "get_ui_element_at": READ_ONLY,
+    "read_ui_element_text": READ_ONLY,
+    "list_menu_items": READ_ONLY,
+    "focus_ui_element": ADDITIVE,
+    "set_ui_element_value": REPLACING,
+    "press_ui_element": OPEN_ENDED,
+    "click_ui_element": OPEN_ENDED,
+    "perform_ui_action": OPEN_ENDED,
+    "click_menu_item": OPEN_ENDED,
     # video
     "get_video_info": READ_ONLY,
     "get_video_frame": READ_ONLY,
