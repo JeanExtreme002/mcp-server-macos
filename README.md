@@ -34,8 +34,9 @@ Over 350 tools, for most of what a Mac does: ask in plain words, and it acts.
 
 With [uv](https://docs.astral.sh/uv/) installed, there's nothing to set up first.
 
-In **Claude Desktop**, one click: download `mcp-server-macos.mcpb` from the
-[latest release](https://github.com/JeanExtreme002/mcp-server-macos/releases/latest) and open it.
+In **Claude Desktop**, download the extension, then open it:
+
+<a href="https://github.com/JeanExtreme002/mcp-server-macos/releases/latest/download/mcp-server-macos.mcpb"><img src="https://img.shields.io/badge/Download_the_extension-1f1f1f?style=for-the-badge" alt="Download mcp-server-macos.mcpb for Claude Desktop" height="32" /></a>
 
 In **Claude Code**:
 
