@@ -42,13 +42,13 @@ class TextAnswer(BaseModel):
 class Choice(BaseModel):
     """What the user picked from a list."""
 
-    choice: Optional[str] = Field(description="The option picked. Null when the user cancelled.")
+    choice: Optional[str] = Field(description="The option picked. Null when the user cancelled, or didn't answer in time.")
 
 
 class ChosenPaths(BaseModel):
     """The files or the folder the user picked."""
 
-    paths: List[str] = Field(description="The paths picked. Empty when the user cancelled.")
+    paths: List[str] = Field(description="The paths picked. Empty when the user cancelled, or didn't answer in time.")
 
 
 def show_alert(
@@ -101,12 +101,10 @@ def ask_choice(
     prompt: Annotated[Optional[str], Field(description="What the dialog says above the list.")] = None,
     default: Annotated[Optional[str], Field(description="The option selected when the dialog opens.")] = None,
     title: Title = None,
+    timeout_seconds: Timeout = 120.0,
 ) -> Choice:
-    """
-    Let the user pick one option from a list, in a dialog. It waits until they answer, with no time
-    limit: ask only while the user is at the Mac.
-    """
-    return Choice(choice=macos.dialog.choose(options, prompt=prompt, default=default, title=title))
+    """Let the user pick one option from a list, in a dialog. It waits until they answer, or the time runs out."""
+    return Choice(choice=macos.dialog.choose(options, prompt=prompt, default=default, title=title, timeout=timeout_seconds))
 
 
 def ask_for_files(
@@ -114,26 +112,26 @@ def ask_for_files(
     types: Types = None,
     folder: StartFolder = None,
     multiple: Annotated[bool, Field(description="True to let the user pick several files.")] = False,
+    timeout_seconds: Timeout = 120.0,
 ) -> ChosenPaths:
     """
-    Let the user pick a file, or several, in the system's file picker. It waits until they answer, with
-    no time limit: ask only while the user is at the Mac.
+    Let the user pick a file, or several, in the system's file picker. It waits until they answer, or the
+    time runs out.
     """
     if multiple:
-        return ChosenPaths(paths=[str(path) for path in macos.dialog.choose_files(prompt, types=types, folder=folder)])
-    chosen = macos.dialog.choose_file(prompt, types=types, folder=folder)
+        chosen_files = macos.dialog.choose_files(prompt, types=types, folder=folder, timeout=timeout_seconds)
+        return ChosenPaths(paths=[str(path) for path in chosen_files])
+    chosen = macos.dialog.choose_file(prompt, types=types, folder=folder, timeout=timeout_seconds)
     return ChosenPaths(paths=[] if chosen is None else [str(chosen)])
 
 
 def ask_for_folder(
     prompt: Annotated[Optional[str], Field(description="What the picker says.")] = None,
     folder: StartFolder = None,
+    timeout_seconds: Timeout = 120.0,
 ) -> ChosenPaths:
-    """
-    Let the user pick a folder in the system's folder picker. It waits until they answer, with no time
-    limit: ask only while the user is at the Mac.
-    """
-    chosen = macos.dialog.choose_folder(prompt, folder=folder)
+    """Let the user pick a folder in the system's folder picker. It waits until they answer, or the time runs out."""
+    chosen = macos.dialog.choose_folder(prompt, folder=folder, timeout=timeout_seconds)
     return ChosenPaths(paths=[] if chosen is None else [str(chosen)])
 
 

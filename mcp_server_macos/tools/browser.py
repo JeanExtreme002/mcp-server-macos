@@ -117,8 +117,10 @@ def run_javascript_in_browser(
     """
     Run JavaScript in the current tab of a browser, and return its result: to read a page, or act on
     it. It runs as the page, with the user's session on that site: it can read what the page shows and
-    do what the user could there, such as sending a form. The browser must allow it, once, in its own
-    menu.
+    do what the user could there, such as sending a form. An error the script raises comes back as one,
+    with the page's message, but a syntax error, which keeps it from running at all, still gives null.
+    It runs inside a block: its let, const and class declarations don't stay in the page for a later
+    call, and a leading 'use strict' isn't a directive. The browser must allow it, once, in its own menu.
     """
     return ScriptResult(result=macos.browser.run_js(script, app))
 
