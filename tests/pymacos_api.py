@@ -44,6 +44,7 @@ EXCLUDED: Dict[str, str] = {
     "menubar.quit": "ends menubar.run, which no tool runs",
     "menubar.every": "calls a Python function every so often while menubar.run runs, which no tool runs",
     "windows.request_permission": "asks for Accessibility, as keyboard.request_permission does for every tool that needs it",
+    "ui.request_permission": "the same function as windows.request_permission",
 }
 
 #: The modules of pymacos that have a toolset, but not yet a tool for everything they do.
